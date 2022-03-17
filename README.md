@@ -352,9 +352,9 @@ The arguments you may need to adjust are the following:
    size of the target satellite (in this case, the angular size). This argument
    lets you add to the radius of the target satellite to increase the size of 
    the aperture with which you capture the brightness. The aperture has a size
-   $\pi(R+seeing)^2$ where $R$ is the apparent angular radius of the target
+   (𝘙 + seeing)² where 𝘙 is the apparent angular radius of the target
    satellite. I correct the final reported brightness by scaling it by the 
-   ratio of the aperture size to the target size $((R+seeing)/R)^2$.
+   ratio of the aperture size to the target size ((𝘙 + seeing)/𝘙)².
 4. `background_degree` lets you choose the degree of the background polynomial
    fit. The default is `background_degree=1`, which I think is good in most 
    cases. Higher-degree polynomials can characterize noise which has more 
