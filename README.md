@@ -1,9 +1,9 @@
 # KHAN: Keck HIRES Aurora pipeliNe
 
 > "You are in a position to demand nothing. I, on the other hand, am in a 
-> position to grant nothing."<br>
-> Khan Noonien Singh<br>
-> <em>Star Trek II: The Wrath of Khan (1982)</em>
+> position to grant nothing."
+> 
+> —<cite>Khan Noonien Singh, Star Trek II: The Wrath of Khan (1982)</cite>
 
 ## Introduction
 I'm writing this README text in March 2022. For some reason, despite being one 
