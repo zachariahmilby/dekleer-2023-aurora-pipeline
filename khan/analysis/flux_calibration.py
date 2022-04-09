@@ -90,12 +90,12 @@ class FluxCalibration:
         # calculate photon energy
         photon_energy = (c.h * c.c /
                          (self._data_subsection.shifted_wavelength_centers
-                          * u.nm * u.photon))
+                          * u.photon))
         photon_energy = photon_energy.to(u.J/u.photon)
 
         # interpolate solar spectrum over wavelengths
         solar_spectrum = \
-            np.interp(self._data_subsection.shifted_wavelength_centers,
+            np.interp(self._data_subsection.shifted_wavelength_centers.value,
                       spectral_radiance_data['wavelength'].value,
                       spectral_radiance_data['radiance'].value)
         solar_spectrum *= spectral_radiance_data['radiance'].unit
@@ -105,7 +105,7 @@ class FluxCalibration:
 
         # interpolate Jupiter meridian reflectivity over wavelengths
         reflectivity = \
-            np.interp(self._data_subsection.shifted_wavelength_centers,
+            np.interp(self._data_subsection.shifted_wavelength_centers.value,
                       reflectivity_data['wavelength'],
                       reflectivity_data['reflectivity'])
 
@@ -128,7 +128,8 @@ class FluxCalibration:
         """
         Calculate the wavelength dispersion (nm/bin).
         """
-        dispersion = np.diff(self._data_subsection.shifted_wavelength_edges)
+        dispersion = np.diff(
+            self._data_subsection.shifted_wavelength_edges.value)
         return np.tile(dispersion, (self._theoretical_flux.shape[0], 1)) * u.nm
 
     @property

@@ -1,4 +1,5 @@
 from pathlib import Path
+import pickle
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -140,12 +141,28 @@ class SurfaceBrightness:
         filename = self._data_subsection.observation_datetimes[
             self._index].replace(':', '')
         path = Path(self._save_path,
-                    f'{self._data_subsection.average_wavelength:.1f}nm',
+                    f'{self._data_subsection.average_wavelength:.1f}',
                     f'{filename}.png')
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
         plt.savefig(path)
         plt.close(fig=fig)
+
+    def save_final_data(self):
+        observation_date = self._data_subsection.observation_datetimes[
+            self._index]
+        path = Path(self._save_path,
+                    f'{self._data_subsection.average_wavelength:.1f}',
+                    f"{observation_date.replace(':', '')}.pickle")
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True)
+        data_dictionary = {
+            'science_image': self._calibrated_science_image,
+            'angular_meshgrids': self._data_subsection.angular_meshgrids,
+            'datetime': observation_date
+        }
+        with open(path, 'wb') as file:
+            pickle.dump(data_dictionary, file)
 
     @property
     def value(self) -> u.Quantity:
@@ -157,7 +174,7 @@ class SurfaceBrightness:
 
 
 def get_aurora_brightnesses(reduced_data_path: str | Path,
-                            save_path: str | Path, seeing: int = 1,
+                            save_path: str | Path, seeing: int | float = 1,
                             top_trim: int = 1, bottom_trim: int = 1,
                             background_degree: int = 1) -> None:
     """
@@ -207,28 +224,28 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
     for wavelengths in feature_wavelengths:
         brightnesses = []
         uncertainties = []
-        try:
-            data_subsection = \
-                DataSubsection(wavelengths=wavelengths,
-                               reduced_data_path=reduced_data_path)
-            masks = Masks(data_subsection=data_subsection, top_trim=top_trim,
-                          bottom_trim=bottom_trim, seeing=seeing)
-            background = Background(data_subsection=data_subsection,
-                                    masks=masks,
-                                    background_degree=background_degree)
-            flux_calibration = FluxCalibration(
-                data_subsection=data_subsection,
-                reduced_data_path=reduced_data_path)
-        except ValueError:
-            continue
+        # try:
+        data_subsection = \
+            DataSubsection(wavelengths=wavelengths,
+                           reduced_data_path=reduced_data_path)
+        masks = Masks(data_subsection=data_subsection, top_trim=top_trim,
+                      bottom_trim=bottom_trim, seeing=seeing)
+        background = Background(data_subsection=data_subsection,
+                                masks=masks,
+                                background_degree=background_degree)
+        flux_calibration = FluxCalibration(
+            data_subsection=data_subsection,
+            reduced_data_path=reduced_data_path)
+        # except ValueError:
+        #     continue
 
         print(f'Retrieving brightnesses at '
-              f'{data_subsection.average_wavelength:.1f} nm...')
+              f'{data_subsection.average_wavelength:.1f}...')
 
         # open file to hold results
         text_file = Path(save_path,
-                         f'{data_subsection.average_wavelength:.1f}nm_'
-                         f'results.txt')
+                         f'{data_subsection.average_wavelength:.1f} '
+                         f'Results.txt')
         if not text_file.parent.exists():
             text_file.parent.mkdir(parents=True)
         with open(text_file, 'w'):
@@ -240,6 +257,7 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
                 background=background, flux_calibration=flux_calibration,
                 save_path=save_path, index=index)
             surface_brightness.save_quality_assurance_graphic()
+            surface_brightness.save_final_data()
             brightnesses.append(surface_brightness.value)
             uncertainties.append(surface_brightness.uncertainty)
 

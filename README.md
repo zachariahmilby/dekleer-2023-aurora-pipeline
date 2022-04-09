@@ -395,7 +395,10 @@ observations, showing
 2. The fitted background,
 3. The background-subtracted image,
 4. The isolated bins used for the target brightness, and
-5. The isolated bins used for noise estimation.
+5. The isolated bins used for noise estimation,
+
+along with a pickle of the final reduced image and the meshgrids you'd need to 
+visualize it.
 
 That's pretty much all there is to it. Each time I retrieve brightnesses, I run
 it a few times until I've figured out the right trim and seeing values, then 

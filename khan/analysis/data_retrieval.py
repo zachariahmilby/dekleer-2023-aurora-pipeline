@@ -26,7 +26,8 @@ class DataSubsection:
             The location of the reduced data FITS files.
         """
         self._wavelengths = wavelengths
-        self._average_wavelength = np.mean(self._wavelengths)
+        self._average_wavelength = np.mean([wavelength.value for wavelength
+                                            in wavelengths])
         self._science_observations_file = Path(reduced_data_path,
                                                'science_observations.fits.gz')
         self._observation_datetimes = self._get_observation_datetimes()
@@ -192,23 +193,23 @@ class DataSubsection:
         return self._wavelengths
 
     @property
-    def average_wavelength(self) -> float:
-        return self._average_wavelength.squeeze()
+    def average_wavelength(self) -> u.Quantity:
+        return self._average_wavelength.squeeze() * u.nm
 
     @property
-    def rest_wavelength_centers(self) -> np.ndarray:
+    def rest_wavelength_centers(self) -> u.Quantity:
         return self._rest_wavelength_centers[self._center_indices]
 
     @property
-    def shifted_wavelength_centers(self) -> np.ndarray:
+    def shifted_wavelength_centers(self) -> u.Quantity:
         return self._shifted_wavelength_centers[self._center_indices]
 
     @property
-    def rest_wavelength_edges(self) -> np.ndarray:
+    def rest_wavelength_edges(self) -> u.Quantity:
         return self._rest_wavelength_centers[self._edge_indices]
 
     @property
-    def shifted_wavelength_edges(self) -> np.ndarray:
+    def shifted_wavelength_edges(self) -> u.Quantity:
         return self._shifted_wavelength_centers[self._edge_indices]
 
     @property
