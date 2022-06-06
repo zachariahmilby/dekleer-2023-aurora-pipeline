@@ -366,27 +366,30 @@ The arguments you may need to adjust are the following:
 
 You can evaluate the results of a retrieval by looking at the two output types.
 The algorithm creates a `.txt` file which contains the observation start time,
-the retrieved brightness in rayleigh and its estimated uncertainty. Here's an
-example of one of those files for the 630.0 nm brightnesses from June 8, 2021:
+the retrieved brightness in rayleighs, the estimated uncertainty in rayleighs 
+and the average background at the particular wavelength in counts/second. 
+Here's an example of one of those files for the 630.0 nm brightnesses from 
+June 8, 2021:
 
 ```
-2021-06-08T12:58:16 266.30 16.54
-2021-06-08T13:05:29 222.44 15.15
-2021-06-08T13:22:12 267.22 16.57
-2021-06-08T13:29:41 279.32 16.93
-2021-06-08T13:36:46 275.59 16.82
-2021-06-08T13:44:33 305.46 17.68
-2021-06-08T13:51:41 312.19 17.87
-2021-06-08T13:58:52 244.22 15.85
-2021-06-08T14:08:09 233.35 15.52
-2021-06-08T14:15:28 248.32 16.00
-2021-06-08T14:22:45 287.77 17.19
-2021-06-08T14:29:56 338.80 18.62
-2021-06-08T14:37:35 363.98 19.29
-2021-06-08T14:44:47 320.27 18.12
-2021-06-08T14:52:33 257.05 16.29
-2021-06-08T15:01:18 223.69 15.26
-2021-06-08T15:08:29 212.36 14.95
+date brightness_R uncertainty_R avg_background_counts
+2021-06-08T12:58:16 266.30 16.54 2.14
+2021-06-08T13:05:29 222.44 15.15 2.16
+2021-06-08T13:22:12 267.22 16.57 2.33
+2021-06-08T13:29:41 279.32 16.93 2.31
+2021-06-08T13:36:46 275.59 16.82 2.29
+2021-06-08T13:44:33 305.46 17.68 2.30
+2021-06-08T13:51:41 312.19 17.87 2.30
+2021-06-08T13:58:52 244.22 15.85 2.30
+2021-06-08T14:08:09 233.35 15.52 2.39
+2021-06-08T14:15:28 248.32 16.00 2.53
+2021-06-08T14:22:45 287.77 17.19 2.67
+2021-06-08T14:29:56 338.80 18.62 2.81
+2021-06-08T14:37:35 363.98 19.29 2.95
+2021-06-08T14:44:47 320.27 18.12 3.08
+2021-06-08T14:52:33 257.05 16.29 3.31
+2021-06-08T15:01:18 223.69 15.26 3.95
+2021-06-08T15:08:29 212.36 14.95 6.05
 ```
 
 It also creates a directory into which it saves graphics for each of the 

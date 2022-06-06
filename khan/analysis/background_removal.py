@@ -181,10 +181,11 @@ class Background:
         self._data_subsection = data_subsection
         self._masks = masks
         self._background_degree = background_degree
-        self._backgrounds = self._calculate_backgrounds()
+        self._backgrounds, self._average_backgrounds = \
+            self._calculate_backgrounds()
 
     def _fit_background_to_vertical_slice(
-            self, vertical_slice: np.ndarray) -> np.ndarray:
+            self, vertical_slice: np.ndarray) -> (np.ndarray, float):
         """
         Fit a polynomial to a vertical slice to estimate the background. This
         ignores any NaNs from masks but estimates the background in those
@@ -196,9 +197,13 @@ class Background:
                                 nan_policy='omit')
         params = model.guess(vertical_slice[good], x=x[good])
         fit = model.fit(vertical_slice[good], params, x=x[good])
-        return fit.eval(x=x)
+        if len(good) < len(vertical_slice):
+            average_background = np.nanmean(vertical_slice[good])
+        else:
+            average_background = np.nan
+        return fit.eval(x=x), average_background
 
-    def _calculate_backgrounds(self) -> list[np.ndarray]:
+    def _calculate_backgrounds(self) -> (list[np.ndarray], list[float]):
         """
         Construct a background image for each of the science images.
         """
@@ -207,14 +212,23 @@ class Background:
                          * self._masks.slit_edge_mask)
         _, n_spa, n_spe = masked_images.shape
         backgrounds = []
+        average_backgrounds = []
         for image in masked_images:
             background = np.zeros_like(image)
+            average_background = []
             for spe in range(n_spe):
-                background[:, spe] = \
+                fit, average = \
                     self._fit_background_to_vertical_slice(image[:, spe])
+                background[:, spe] = fit
+                average_background.append(average)
             backgrounds.append(background)
-        return backgrounds
+            average_backgrounds.append(np.mean(average_background).squeeze())
+        return backgrounds, average_backgrounds
 
     @property
     def backgrounds(self) -> list[np.ndarray]:
         return self._backgrounds
+
+    @property
+    def average_backgrounds(self) -> list[float]:
+        return self._average_backgrounds

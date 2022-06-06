@@ -224,7 +224,6 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
     for wavelengths in feature_wavelengths:
         brightnesses = []
         uncertainties = []
-        # try:
         data_subsection = \
             DataSubsection(wavelengths=wavelengths,
                            reduced_data_path=reduced_data_path)
@@ -236,8 +235,6 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
         flux_calibration = FluxCalibration(
             data_subsection=data_subsection,
             reduced_data_path=reduced_data_path)
-        # except ValueError:
-        #     continue
 
         print(f'Retrieving brightnesses at '
               f'{data_subsection.average_wavelength:.1f}...')
@@ -248,8 +245,9 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
                          f'Results.txt')
         if not text_file.parent.exists():
             text_file.parent.mkdir(parents=True)
-        with open(text_file, 'w'):
-            pass
+        with open(text_file, 'w') as file:
+            file.write('date brightness_R uncertainty_R '
+                       'avg_background_counts_per_s\n')
 
         for index in range(data_subsection.science_data.shape[0]):
             surface_brightness = SurfaceBrightness(
@@ -263,5 +261,5 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
 
             with open(text_file, 'a') as file:
                 file.write(f'{data_subsection.observation_datetimes[index]} '
-                           f'{brightnesses[-1]:.2f} {uncertainties[-1]:.2f}'
-                           f'\n')
+                           f'{brightnesses[-1]:.2f} {uncertainties[-1]:.2f} '
+                           f'{background.average_backgrounds[index]:.2f}\n')
