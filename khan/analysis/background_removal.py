@@ -154,6 +154,14 @@ class Masks:
     def inverted_target_masks(self) -> np.ndarray:
         return self._inverted_target_masks
 
+    @property
+    def horizontal_indices(self) -> list[int]:
+        return self._horizontal_indices
+
+    @property
+    def vertical_indices(self) -> list[list[int]]:
+        return self._vertical_indices
+
 
 class Background:
     """

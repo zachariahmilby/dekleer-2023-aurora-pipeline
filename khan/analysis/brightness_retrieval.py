@@ -8,10 +8,15 @@ import numpy as np
 from khan.analysis.background_removal import Masks, Background
 from khan.analysis.data_retrieval import DataSubsection
 from khan.analysis.flux_calibration import FluxCalibration
+from khan.graphics import data_cmap
 
-# lists of wavelengths to examine (nested lists are to allow for
-feature_wavelengths = [[557.7330 * u.nm], [630.0304 * u.nm], [636.3776 * u.nm],
-                       [777.1944 * u.nm, 777.4166 * u.nm, 777.5388 * u.nm],
+# lists of wavelengths to examine
+feature_wavelengths = [[557.7330 * u.nm],
+                       [630.0304 * u.nm],
+                       [636.3776 * u.nm],
+                       [777.1944 * u.nm],
+                       [777.4166 * u.nm],
+                       [777.5388 * u.nm],
                        [844.625 * u.nm, 844.636 * u.nm, 844.676 * u.nm],
                        [656.2852 * u.nm]]
 
@@ -66,27 +71,27 @@ class SurfaceBrightness:
                             * background_subtracted_image
                             * self._flux_calibration.slit_width_in_arcsec
                             * self._flux_calibration.slit_length_in_arcsec
-                            / (self._data_subsection.spatial_bin_scale
-                               * self._data_subsection.spectral_bin_scale)
+                            / (np.pi *
+                               self._data_subsection.target_angular_radius**2)
                             * self._flux_calibration.slit_width_in_bins
                             * self._flux_calibration.wavelength_dispersion)
         return calibrated_image.value
 
-    def _calculate_surface_brightness(self) -> u.Quantity:
+    def _calculate_surface_brightness(self) -> float:
         """
-        Because I've calibrated every pixel, the surface brightness is the
-        average over the aperture.
+        Because I've calibrated every pixel by Ganymede's angular size, the
+        surface brightness is the sum over the aperture.
         """
         brightness = \
-            np.nanmean(self._calibrated_science_image
-                       * self._masks.inverted_target_masks[self._index]
-                       * self._masks.slit_edge_mask)
-        return brightness * self._factor
+            np.nansum(self._calibrated_science_image
+                      * self._masks.inverted_target_masks[self._index]
+                      * self._masks.slit_edge_mask).squeeze()
+        return brightness
 
     def _calcualte_uncertainty(self) -> u.Quantity:
         """
-        This one is a little compltes. The easy part is the Poisson noise from
-        the target itself, for which I just use the square-root of the
+        This one is a little complicated. The easy part is the Poisson noise
+        from the target itself, for which I just use the square-root of the
         retrieved brightness. I didn't propagate or characterize any of the
         other noise sources (like read noise, dark current, etc.), but instead
         I estimate the total of this remaining noise by using the standard
@@ -102,40 +107,34 @@ class SurfaceBrightness:
                           * self._masks.slit_edge_mask)
         n_bins = len(np.where(np.isnan(
             self._masks.target_masks[self._index]))[0])
-        return np.sqrt(noise * self._factor / np.sqrt(n_bins)
-                       + np.abs(self._brightness))
+        return np.sqrt(n_bins * noise + np.abs(self._brightness))
 
     def save_quality_assurance_graphic(self) -> None:
         """
         Save a quality-assurance graphic of the result.
         """
-        fig, axes = plt.subplots(5, 1, figsize=(2, 8), sharex='all')
+        fig, axes = plt.subplots(4, 1, figsize=(2, 8), sharex='all')
         [axis.set_xticks([]) for axis in axes]
         [axis.set_yticks([]) for axis in axes]
         x, y = self._data_subsection.angular_meshgrids
         axes[0].pcolormesh(x, y,
                            self._data_subsection.science_data[self._index]
                            * self._masks.slit_edge_mask,
-                           vmin=0)
+                           cmap=data_cmap(), vmin=0)
         axes[0].set_title('Reduced Science Image')
         axes[1].pcolormesh(x, y, self._background.backgrounds[self._index]
                            * self._masks.slit_edge_mask,
-                           vmin=0)
+                           cmap=data_cmap(), vmin=0)
         axes[1].set_title('Fitted Background')
         axes[2].pcolormesh(x, y, self._calibrated_science_image
-                           * self._masks.slit_edge_mask, vmin=0)
+                           * self._masks.slit_edge_mask, cmap=data_cmap(),
+                           vmin=0)
         axes[2].set_title('Background-Subtracted Science Image')
-        axes[3].pcolormesh(x, y,
-                           (self._calibrated_science_image
-                            * self._masks.slit_edge_mask
-                            * self._masks.inverted_target_masks[self._index]),
-                           vmin=0)
-        axes[3].set_title('Isolated Target Bins')
-        axes[4].pcolormesh(x, y, (self._calibrated_science_image
-                                  * self._masks.slit_edge_mask
-                                  * self._masks.target_masks[self._index]),
-                           vmin=0)
-        axes[4].set_title('Isolated Noise Bins')
+        axes[3].pcolormesh(x, y, self._calibrated_science_image
+                           * self._masks.slit_edge_mask
+                           * self._masks.inverted_target_masks[self._index],
+                           cmap=data_cmap(), vmin=0)
+        axes[3].set_title('Target Size and Aperture')
         [axis.set_aspect('equal') for axis in axes]
         plt.tight_layout()
         filename = self._data_subsection.observation_datetimes[
@@ -165,7 +164,7 @@ class SurfaceBrightness:
             pickle.dump(data_dictionary, file)
 
     @property
-    def value(self) -> u.Quantity:
+    def value(self) -> float:
         return self._brightness
 
     @property

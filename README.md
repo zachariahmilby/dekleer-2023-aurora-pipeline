@@ -304,11 +304,11 @@ following wavelengths (if the detector setup captured them):
 2. 630.0304 nm O(¹D) to O(³P₀)
 3. 636.3776 nm O(¹D) to O(³P₂)
 4. 656.2852 nm Balmer-alpha (Hα)
-5. The 777.4 nm OI triplet:
+5. The 777.4 nm OI triplet (done as separate lines due to their wide spacing):
    1. 777.1944 nm O(⁵P₃) to O(⁵S₂)
    2. 777.4166 nm O(⁵P₂) to O(⁵S₂)
    3. 777.5388 nm O(⁵P₁) to O(⁵S₂)
-6. The 844.6 nm OI triplet
+6. The 844.6 nm OI triplet (done as one line since they overlap)
    1. 844.625 nm O(³P₀) to O(³S₁)
    2. 844.636 nm O(³P₂) to O(³S₁)
    3. 844.676 nm O(³P₁) to O(³S₁)
@@ -327,7 +327,9 @@ To run the retrieval:
 Retrieving brightnesses at 557.7 nm...
 Retrieving brightnesses at 630.0 nm...
 Retrieving brightnesses at 636.4 nm...
+Retrieving brightnesses at 777.2 nm...
 Retrieving brightnesses at 777.4 nm...
+Retrieving brightnesses at 777.5 nm...
 Retrieving brightnesses at 844.6 nm...
 Retrieving brightnesses at 656.3 nm...
 ```
@@ -372,33 +374,32 @@ Here's an example of one of those files for the 630.0 nm brightnesses from
 June 8, 2021:
 
 ```
-date brightness_R uncertainty_R avg_background_counts
-2021-06-08T12:58:16 266.30 16.54 2.14
-2021-06-08T13:05:29 222.44 15.15 2.16
-2021-06-08T13:22:12 267.22 16.57 2.33
-2021-06-08T13:29:41 279.32 16.93 2.31
-2021-06-08T13:36:46 275.59 16.82 2.29
-2021-06-08T13:44:33 305.46 17.68 2.30
-2021-06-08T13:51:41 312.19 17.87 2.30
-2021-06-08T13:58:52 244.22 15.85 2.30
-2021-06-08T14:08:09 233.35 15.52 2.39
-2021-06-08T14:15:28 248.32 16.00 2.53
-2021-06-08T14:22:45 287.77 17.19 2.67
-2021-06-08T14:29:56 338.80 18.62 2.81
-2021-06-08T14:37:35 363.98 19.29 2.95
-2021-06-08T14:44:47 320.27 18.12 3.08
-2021-06-08T14:52:33 257.05 16.29 3.31
-2021-06-08T15:01:18 223.69 15.26 3.95
-2021-06-08T15:08:29 212.36 14.95 6.05
+date brightness_R uncertainty_R avg_background_counts_per_s
+2021-06-08T12:58:16 107.20 11.75 2.14
+2021-06-08T13:05:29 95.29 11.12 2.17
+2021-06-08T13:22:12 107.00 11.73 2.33
+2021-06-08T13:29:41 111.80 11.93 2.31
+2021-06-08T13:36:46 114.59 12.01 2.29
+2021-06-08T13:44:33 124.27 12.38 2.31
+2021-06-08T13:51:41 127.64 12.52 2.30
+2021-06-08T13:58:52 99.99 11.35 2.31
+2021-06-08T14:08:09 96.78 11.32 2.39
+2021-06-08T14:15:28 105.62 11.67 2.53
+2021-06-08T14:22:45 118.04 12.25 2.68
+2021-06-08T14:29:56 139.95 13.11 2.81
+2021-06-08T14:37:35 152.45 13.61 2.95
+2021-06-08T14:44:47 134.71 12.94 3.08
+2021-06-08T14:52:33 107.73 11.89 3.32
+2021-06-08T15:01:18 91.08 11.30 3.95
+2021-06-08T15:08:29 90.68 11.64 6.05
 ```
 
 It also creates a directory into which it saves graphics for each of the 
 observations, showing
 1. The initial reduced data image,
 2. The fitted background,
-3. The background-subtracted image,
-4. The isolated bins used for the target brightness, and
-5. The isolated bins used for noise estimation,
+3. The background-subtracted image, and
+4. The aperture-isolated bins used for the target brightness,
 
 along with a pickle of the final reduced image and the meshgrids you'd need to 
 visualize it.
