@@ -102,9 +102,12 @@ class SurfaceBrightness:
         of the chosen aperture and the angular size of the target source by
         multiplying by the ratio of their angular areas.
         """
-        noise = np.nanstd(self._calibrated_science_image
-                          * self._masks.target_masks[self._index]
-                          * self._masks.slit_edge_mask)
+        rows = np.unique(
+            np.where(np.isnan(self._masks.target_masks[self._index]))[0])
+        noise_pixels = (self._calibrated_science_image[rows]
+                        * self._masks.target_masks[self._index][rows]
+                        * self._masks.slit_edge_mask[rows])
+        noise = np.nanmean(noise_pixels) + np.nanstd(noise_pixels)
         n_bins = len(np.where(np.isnan(
             self._masks.target_masks[self._index]))[0])
         return np.sqrt(n_bins * noise + np.abs(self._brightness))
