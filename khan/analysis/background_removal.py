@@ -67,10 +67,11 @@ class Masks:
         for trace in self._data_susbection.guide_satellite_data:
             image_indices = []
             for wavelength_index in self._horizontal_indices:
-                model = GaussianModel()
+                model = GaussianModel(nan_policy='omit')
                 vertical_slice = trace[:, wavelength_index]
-                params = model.guess(vertical_slice, x=x)
-                fit = model.fit(vertical_slice, params, x=x)
+                good = np.where(~np.isnan(vertical_slice))
+                params = model.guess(vertical_slice[good], x=x[good])
+                fit = model.fit(vertical_slice[good], params, x=x[good])
                 ind = np.round(fit.params['center'].value).astype(int)
                 image_indices.append(ind)
             vertical_indices.append(image_indices)

@@ -223,9 +223,12 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
     for wavelengths in feature_wavelengths:
         brightnesses = []
         uncertainties = []
-        data_subsection = \
-            DataSubsection(wavelengths=wavelengths,
-                           reduced_data_path=reduced_data_path)
+        try:  # skip any wavelengths that aren't captured in the data
+            data_subsection = \
+                DataSubsection(wavelengths=wavelengths,
+                               reduced_data_path=reduced_data_path)
+        except ValueError:
+            continue
         masks = Masks(data_subsection=data_subsection, top_trim=top_trim,
                       bottom_trim=bottom_trim, seeing=seeing)
         background = Background(data_subsection=data_subsection,
