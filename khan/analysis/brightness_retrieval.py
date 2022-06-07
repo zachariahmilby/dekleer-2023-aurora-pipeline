@@ -116,38 +116,45 @@ class SurfaceBrightness:
         """
         Save a quality-assurance graphic of the result.
         """
-        fig, axes = plt.subplots(4, 1, figsize=(2, 8), sharex='all')
+        fig, axes = plt.subplots(4, 1, figsize=(8, 8), sharex='all',
+                                 constrained_layout=True)
         [axis.set_xticks([]) for axis in axes]
         [axis.set_yticks([]) for axis in axes]
         x, y = self._data_subsection.angular_meshgrids
-        axes[0].pcolormesh(x, y,
-                           self._data_subsection.science_data[self._index]
-                           * self._masks.slit_edge_mask,
-                           cmap=data_cmap(), vmin=0)
+        img = axes[0].pcolormesh(
+            x, y, (self._data_subsection.science_data[self._index]
+                   * self._masks.slit_edge_mask),
+            cmap=data_cmap(), vmin=0, rasterized=True)
         axes[0].set_title('Reduced Science Image')
-        axes[1].pcolormesh(x, y, self._background.backgrounds[self._index]
-                           * self._masks.slit_edge_mask,
-                           cmap=data_cmap(), vmin=0)
+        plt.colorbar(img, ax=axes[0], label='Electrons/second')
+        img = axes[1].pcolormesh(
+            x, y, (self._background.backgrounds[self._index]
+                   * self._masks.slit_edge_mask),
+            cmap=data_cmap(), vmin=0, rasterized=True)
+        plt.colorbar(img, ax=axes[1], label='Electrons/second')
         axes[1].set_title('Fitted Background')
-        axes[2].pcolormesh(x, y, self._calibrated_science_image
-                           * self._masks.slit_edge_mask, cmap=data_cmap(),
-                           vmin=0)
+        img = axes[2].pcolormesh(
+            x, y, (self._calibrated_science_image
+                   * self._masks.slit_edge_mask),
+            cmap=data_cmap(), vmin=0, rasterized=True)
+        plt.colorbar(img, ax=axes[2], label='Rayleighs')
         axes[2].set_title('Background-Subtracted Science Image')
-        axes[3].pcolormesh(x, y, self._calibrated_science_image
-                           * self._masks.slit_edge_mask
-                           * self._masks.inverted_target_masks[self._index],
-                           cmap=data_cmap(), vmin=0)
+        img = axes[3].pcolormesh(
+            x, y, (self._calibrated_science_image
+                   * self._masks.slit_edge_mask
+                   * self._masks.inverted_target_masks[self._index]),
+            cmap=data_cmap(), vmin=0, rasterized=True)
+        plt.colorbar(img, ax=axes[3], label='Rayleighs')
         axes[3].set_title('Target Size and Aperture')
         [axis.set_aspect('equal') for axis in axes]
-        plt.tight_layout()
         filename = self._data_subsection.observation_datetimes[
             self._index].replace(':', '')
         path = Path(self._save_path,
                     f'{self._data_subsection.average_wavelength:.1f}',
-                    f'{filename}.png')
+                    f'{filename}.pdf')
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
-        plt.savefig(path)
+        plt.savefig(path, bbox_inches='tight')
         plt.close(fig=fig)
 
     def save_final_data(self):
