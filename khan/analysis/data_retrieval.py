@@ -206,11 +206,11 @@ class DataSubsection:
 
     @property
     def rest_wavelength_edges(self) -> u.Quantity:
-        return self._rest_wavelength_centers[self._edge_indices]
+        return self._rest_wavelength_edges[self._edge_indices]
 
     @property
     def shifted_wavelength_edges(self) -> u.Quantity:
-        return self._shifted_wavelength_centers[self._edge_indices]
+        return self._shifted_wavelength_edges[self._edge_indices]
 
     @property
     def science_data(self) -> np.ndarray:

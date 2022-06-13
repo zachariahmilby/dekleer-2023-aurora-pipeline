@@ -3,6 +3,7 @@ import pickle
 
 import astropy.units as u
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 
 from khan.analysis.background_removal import Masks, Background
@@ -49,6 +50,7 @@ class SurfaceBrightness:
         self._factor = self._calculate_seeing_scaling_factor()
         self._brightness = self._calculate_surface_brightness()
         self._uncertainty = self._calcualte_uncertainty()
+        self._line_spectrum = self._make_line_spectrum()
 
     def _calculate_seeing_scaling_factor(self) -> float:
         """
@@ -88,6 +90,10 @@ class SurfaceBrightness:
                       * self._masks.slit_edge_mask).squeeze()
         return brightness
 
+    def _find_lines_with_target(self):
+        return np.unique(
+            np.where(np.isnan(self._masks.target_masks[self._index]))[0])
+
     def _calcualte_uncertainty(self) -> u.Quantity:
         """
         This one is a little complicated. The easy part is the Poisson noise
@@ -102,8 +108,7 @@ class SurfaceBrightness:
         of the chosen aperture and the angular size of the target source by
         multiplying by the ratio of their angular areas.
         """
-        rows = np.unique(
-            np.where(np.isnan(self._masks.target_masks[self._index]))[0])
+        rows = self._find_lines_with_target()
         noise_pixels = (self._calibrated_science_image[rows]
                         * self._masks.target_masks[self._index][rows]
                         * self._masks.slit_edge_mask[rows])
@@ -112,15 +117,27 @@ class SurfaceBrightness:
             self._masks.target_masks[self._index]))[0])
         return np.sqrt(n_bins * noise + np.abs(self._brightness))
 
+    def _make_line_spectrum(self) -> u.Quantity:
+        """
+        Calculate a 1D spectrum by averaging only the rows containing the
+        target mask.
+        """
+        rows = self._find_lines_with_target()
+        line_spectrum = np.nansum(
+            self._calibrated_science_image[rows]
+            * self._masks.slit_edge_mask[rows], axis=0)
+        return line_spectrum * u.R
+
     def save_quality_assurance_graphic(self) -> None:
         """
         Save a quality-assurance graphic of the result.
         """
-        fig, axes = plt.subplots(4, 1, figsize=(8, 8), sharex='all',
+        fig, axes = plt.subplots(4, 1, figsize=(3, 6), sharex='all',
                                  constrained_layout=True)
         [axis.set_xticks([]) for axis in axes]
         [axis.set_yticks([]) for axis in axes]
         x, y = self._data_subsection.angular_meshgrids
+
         img = axes[0].pcolormesh(
             x, y, (self._data_subsection.science_data[self._index]
                    * self._masks.slit_edge_mask),
@@ -146,12 +163,45 @@ class SurfaceBrightness:
             cmap=data_cmap(), vmin=0, rasterized=True)
         plt.colorbar(img, ax=axes[3], label='Rayleighs')
         axes[3].set_title('Target Size and Aperture')
+
         [axis.set_aspect('equal') for axis in axes]
+
         filename = self._data_subsection.observation_datetimes[
             self._index].replace(':', '')
         path = Path(self._save_path,
                     f'{self._data_subsection.average_wavelength:.1f}',
                     f'{filename}.pdf')
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True)
+        plt.savefig(path, bbox_inches='tight')
+        plt.close(fig=fig)
+
+    def save_1d_spectrum(self):
+        fig, axis = plt.subplots(1, 1, constrained_layout=True)
+        axis.plot(self.wavelength_1d, self.spectrum_1d, color='k')
+        dwavelength = np.median(np.diff(
+            self._data_subsection.shifted_wavelength_edges.value))
+        for wavelength in self._data_subsection.feature_wavelengths:
+            ymin = (wavelength.value
+                    - (self._data_subsection.target_angular_radius.value
+                       + self._masks.seeing)
+                    * dwavelength / self._data_subsection.spectral_bin_scale)
+            ymax = (wavelength.value
+                    + (self._data_subsection.target_angular_radius.value
+                       + self._masks.seeing)
+                    * dwavelength / self._data_subsection.spectral_bin_scale)
+            axis.axvspan(ymin, ymax, color='tab:grey', alpha=0.25, linewidth=0)
+            axis.axvline(wavelength.value, color='tab:grey', linestyle='--')
+        axis.set_xlabel('Doppler-Shifted Wavelength [nm]')
+        axis.set_xlim(self._data_subsection.shifted_wavelength_edges[0].value,
+                      self._data_subsection.shifted_wavelength_edges[-1].value)
+        axis.xaxis.set_major_formatter(ticker.StrMethodFormatter('{x:.2f}'))
+        axis.set_ylabel('Brightness [R]')
+        filename = self._data_subsection.observation_datetimes[
+            self._index].replace(':', '')
+        path = Path(self._save_path,
+                    f'{self._data_subsection.average_wavelength:.1f}',
+                    f'{filename}_1D.pdf')
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
         plt.savefig(path, bbox_inches='tight')
@@ -167,19 +217,40 @@ class SurfaceBrightness:
             path.parent.mkdir(parents=True)
         data_dictionary = {
             'science_image': self._calibrated_science_image,
+            'trace_image':
+                self._data_subsection.guide_satellite_data[self._index],
             'angular_meshgrids': self._data_subsection.angular_meshgrids,
-            'datetime': observation_date
+            'datetime': observation_date,
+            'spectrum_1d': self.spectrum_1d,
+            'wavelength_1d': self.wavelength_1d,
         }
         with open(path, 'wb') as file:
             pickle.dump(data_dictionary, file)
 
     @property
-    def value(self) -> float:
+    def brightness(self) -> float:
         return self._brightness
 
     @property
     def uncertainty(self) -> u.Quantity:
         return self._uncertainty
+
+    @property
+    def spectrum_1d(self) -> u.Quantity:
+        return self._line_spectrum
+
+    @property
+    def wavelength_1d(self) -> u.Quantity:
+        return self._data_subsection.shifted_wavelength_centers
+
+    @property
+    def angular_width(self) -> float:
+        return (self._data_subsection.target_angular_radius.value
+                + self._masks.seeing)
+
+    @property
+    def spectral_bin_scale(self) -> float:
+        return self._data_subsection.spectral_bin_scale
 
 
 def get_aurora_brightnesses(reduced_data_path: str | Path,
@@ -233,6 +304,10 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
     for wavelengths in feature_wavelengths:
         brightnesses = []
         uncertainties = []
+        line_spectra = []
+        line_wavelengths = None
+        angular_radii = []
+        spectral_bin_scale = None
         try:  # skip any wavelengths that aren't captured in the data
             data_subsection = \
                 DataSubsection(wavelengths=wavelengths,
@@ -268,8 +343,15 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
                 save_path=save_path, index=index)
             surface_brightness.save_quality_assurance_graphic()
             surface_brightness.save_final_data()
-            brightnesses.append(surface_brightness.value)
+            surface_brightness.save_1d_spectrum()
+            brightnesses.append(surface_brightness.brightness)
             uncertainties.append(surface_brightness.uncertainty)
+            line_spectra.append(surface_brightness.spectrum_1d)
+            if line_wavelengths is None:
+                line_wavelengths = surface_brightness.wavelength_1d
+            if spectral_bin_scale is None:
+                spectral_bin_scale = surface_brightness.spectral_bin_scale
+            angular_radii.append(surface_brightness.angular_width)
 
             with open(text_file, 'a') as file:
                 file.write(f'{data_subsection.observation_datetimes[index]} '
