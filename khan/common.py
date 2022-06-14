@@ -192,3 +192,19 @@ def get_solar_spectral_radiance(value: bool = False) -> dict:
         return {'wavelength': data[:, 0] * u.nm,
                 'radiance': data[:, 1] / np.pi * u.watt / (
                         u.m ** 2 * u.nm * u.sr)}
+
+
+def aurora_feature_wavelengths() -> [u.Quantity]:
+    """
+    Retrieve a list of all of the aurora wavelengths. I've placed them in
+    sub-lists so that lines that overlap (844.6 nm) can be kept separate from
+    lines that don't over lap (777.4 nm). That way, by looping through every
+    item in the top-level list, you can either loop through the individual
+    lines or take their average as necessary.
+    """
+    return [[557.7330] * u.nm,
+            [630.0304] * u.nm,
+            [636.3776] * u.nm,
+            [777.1944] * u.nm, [777.4166] * u.nm, [777.5388] * u.nm,
+            [844.625, 844.636, 844.676] * u.nm,
+            [656.2852] * u.nm]

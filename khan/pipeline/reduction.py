@@ -4,6 +4,9 @@ from pathlib import Path
 
 import numpy as np
 from astropy.io import fits
+from astropy.time import Time
+from astroquery.jplhorizons import Horizons
+import astropy.units as u
 
 from khan.graphics import bias_cmap, flat_cmap, arc_cmap, data_cmap
 from khan.pipeline.flux_calibration import correct_for_airmass_extinction
@@ -61,6 +64,15 @@ def save_flux_calibration_data(
             order_data.append(data / exposure_time.value)
         primary_data.append(order_data)
     base_anc = flux_calibration_images[0][0].anc
+
+    # calculate ephemeris quantities
+    dates = [flux_calibration_images[obs][0].anc['date_time']
+             for obs in range(n_obs)]
+    epoch = Time(dates, format='isot', scale='utc').jd
+    eph = Horizons(id='599', location='568',
+                   epochs=epoch).ephemerides()
+    distance = eph['r']
+
     primary = fits.PrimaryHDU(np.array(primary_data))
     header = primary.header
     header['NAXIS1'] = (header['NAXIS1'], 'number of spectral bins')
@@ -117,16 +129,22 @@ def save_flux_calibration_data(
         array=[flux_calibration_images[obs][0].anc['airmass'].value
                for obs in range(n_obs)]
     )
-    obs_table_hdu = fits.BinTableHDU.from_columns(
-        [filenames, exposure_times, observation_dates, airmasses],
-        name='OBSERVATION_INFORMATION')
-    orders = fits.Column(
-        name='ORDERS', format='I',
-        array=[flux_calibration_images[0][order].anc['order']
-               for order in range(n_orders)]
+    distances = fits.Column(
+        name='DISTANCE', format='E', unit='au',
+        array=distance
     )
-    ech_orders_hdu = fits.BinTableHDU.from_columns([orders],
-                                                   name='ECHELLE_ORDERS')
+    obs_table_hdu = fits.BinTableHDU.from_columns(
+        [filenames, exposure_times, observation_dates, airmasses, distances],
+        name='OBSERVATION_INFORMATION')
+    header = obs_table_hdu.header
+    header['TTYPE1'] = (header['TTYPE1'], 'original file name')
+    header['TTYPE2'] = (header['TTYPE2'], 'exposure time')
+    header['TTYPE3'] = (header['TTYPE3'], 'date at start of exposure')
+    header['TTYPE4'] = (header['TTYPE4'], 'airmass')
+
+    orders = np.array([flux_calibration_images[0][order].anc['order']
+                       for order in range(n_orders)]).squeeze()
+    ech_orders_hdu = fits.ImageHDU(orders, name='ECHELLE_ORDERS')
     wavelength_centers = np.array([flux_calibration_images[0][order].anc[
                                        'pixel_center_wavelengths'].value
                                    for order in range(n_orders)]).squeeze()
@@ -173,6 +191,18 @@ def save_science_target_data(
                 science_target_images[obs][order].anc['exposure_time']
             order_data.append(data / exposure_time.value)
         primary_data.append(order_data)
+
+    # calculate ephemeris quantities
+    dates = [science_target_images[obs][0].anc['date_time']
+             for obs in range(n_obs)]
+    epoch = Time(dates, format='isot', scale='utc').jd
+    ids = {'Jupiter': '599', 'Io': '501', 'Europa': '502',
+           'Ganymede': '503', 'Callisto': '504'}
+    eph = Horizons(id=ids[science_target_name], location='568',
+                   epochs=epoch).ephemerides()
+    velocities = eph['delta_rate'].to(u.m / u.s)
+    radii = (eph['ang_width'] / 2) * u.arcsec
+
     base_anc = science_target_images[0][0].anc
     primary = fits.PrimaryHDU(np.array(primary_data))
     header = primary.header
@@ -231,10 +261,23 @@ def save_science_target_data(
         array=[science_target_images[obs][0].anc['airmass'].value
                for obs in range(n_obs)]
     )
+    primary_angular_size = fits.Column(
+        name='A_RADIUS', format='E', unit='arcseconds', array=radii
+    )
+    primary_relative_velocity = fits.Column(
+        name='RELVLCTY', format='E', unit='meters/second', array=velocities
+    )
     primary_obs_table_hdu = fits.BinTableHDU.from_columns(
         [primary_filenames, primary_exposure_times, primary_observation_dates,
-         primary_airmasses],
+         primary_airmasses, primary_angular_size, primary_relative_velocity],
         name='SCIENCE_OBSERVATION_INFORMATION')
+    header = primary_obs_table_hdu.header
+    header['TTYPE1'] = (header['TTYPE1'], 'original file name')
+    header['TTYPE2'] = (header['TTYPE2'], 'exposure time')
+    header['TTYPE3'] = (header['TTYPE3'], 'date at start of exposure')
+    header['TTYPE4'] = (header['TTYPE4'], 'airmass')
+    header['TTYPE5'] = (header['TTYPE5'], 'target apparent angular radius')
+    header['TTYPE6'] = (header['TTYPE6'], 'target apparent relative velocity')
 
     # guide satellite image
     n_obs_guide, n_orders_guide = np.shape(guide_satellite_images)
@@ -290,14 +333,15 @@ def save_science_target_data(
         [guide_satellite_filenames, guide_satellite_exposure_times,
          guide_satellite_observation_dates, guide_satellite_airmasses],
         name='GUIDE_SATELLITE_OBSERVATION_INFORMATION')
+    header = guide_satellite_obs_table_hdu.header
+    header['TTYPE1'] = (header['TTYPE1'], 'original file name')
+    header['TTYPE2'] = (header['TTYPE2'], 'exposure time')
+    header['TTYPE3'] = (header['TTYPE3'], 'date at start of exposure')
+    header['TTYPE4'] = (header['TTYPE4'], 'airmass')
 
-    orders = fits.Column(
-        name='ORDERS', format='I',
-        array=[science_target_images[0][order].anc['order']
-               for order in range(n_orders)]
-    )
-    ech_orders_hdu = fits.BinTableHDU.from_columns([orders],
-                                                   name='ECHELLE_ORDERS')
+    orders = np.array([science_target_images[0][order].anc['order']
+                       for order in range(n_orders)]).squeeze()
+    ech_orders_hdu = fits.ImageHDU(orders, name='ECHELLE_ORDERS')
     wavelength_centers = np.array([science_target_images[0][order].anc[
                                        'pixel_center_wavelengths'].value
                                    for order in range(n_orders)]).squeeze()
@@ -326,7 +370,7 @@ def save_science_target_data(
 
 
 def reduce_data(science_target_name: str, guide_satellite_name: str,
-                source_data_path: str, save_path: str,
+                source_data_path: str | Path, save_path: str | Path,
                 quality_assurance: bool = True) -> None:
     """
     Wrapper function to reduce a set of Keck/HIRES Galilean satellite aurora
