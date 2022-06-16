@@ -27,7 +27,7 @@ class OrderData:
             and "science_observations.fits.gz".
         wavelengths : astropy.units.quantity.Quantity
             Aurora wavelength(s) as an astropy Quantity.
-        seeing : float
+        seeing : u.Quantity
             How much you want to add to the target radius in arcseconds to
             account for increase in the apparent target size due to atmospheric
             or other conditions. Default is 1 arcsecond.
