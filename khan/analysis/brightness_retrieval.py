@@ -469,7 +469,7 @@ class AuroraBrightness:
                         'spectra_2D', filename)
         if not savepath.parent.exists():
             savepath.parent.mkdir(parents=True)
-        np.savetxt(filename, image)
+        np.savetxt(savepath, image)
 
     def _calibrate_images(self) -> (u.Quantity, u.Quantity):
         """
