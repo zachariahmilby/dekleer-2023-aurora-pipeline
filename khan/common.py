@@ -192,3 +192,20 @@ def get_solar_spectral_radiance(value: bool = False) -> dict:
         return {'wavelength': data[:, 0] * u.nm,
                 'radiance': data[:, 1] / np.pi * u.watt / (
                         u.m ** 2 * u.nm * u.sr)}
+
+
+def aurora_line_wavelengths() -> [u.Quantity]:
+    """
+    Retrieve a list of all of the aurora wavelengths. Each is in a sublist to
+    keep triplets together.
+
+    Returns
+    -------
+    A list of aurora line wavelengths as Astropy quantities.
+    """
+    return [[557.7330] * u.nm,
+            [630.0304] * u.nm,
+            [636.3776] * u.nm,
+            [777.1944, 777.4166, 777.5388] * u.nm,
+            [844.625, 844.636, 844.676] * u.nm,
+            [656.2852] * u.nm]
