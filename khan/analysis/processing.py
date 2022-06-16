@@ -14,7 +14,7 @@ import warnings
 
 def get_aurora_brightnesses(reduced_data_path: str | Path,
                             save_path: str | Path,
-                            seeing: u.Quantity = 1 * u.arcsec,
+                            seeing: float = 1,
                             exclude: dict = None,
                             y_offset: int = 0):
     """
@@ -29,7 +29,7 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
         and "science_observations.fits.gz".
     save_path : str or Path
         The location where you want the retrieved brightnesses saved.
-    seeing : u.Quantity
+    seeing : float
         How much to add to the radius of the of the target in arcseconds to
         account for atmospheric seeing or other point-source smearing effects.
     exclude : dict
@@ -53,21 +53,11 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        try:
-            if not seeing.unit == u.arcsec:
-                raise Exception('Seeing must be in arcseconds! '
-                                'Use astropy units, e.g., '
-                                'import astropy.units as u; '
-                                'seeing = 1 * u.arcsec.')
-        except AttributeError:
-            raise Exception('Seeing must be in arcseconds! '
-                            'Use astropy units, e.g., '
-                            'import astropy.units as u; '
-                            'seeing = 1 * u.arcsec.')
         for wavelengths in aurora_line_wavelengths():
             try:
                 order_data = OrderData(reduced_data_path=reduced_data_path,
-                                       wavelengths=wavelengths, seeing=seeing,
+                                       wavelengths=wavelengths,
+                                       seeing=seeing * u.arcsec,
                                        exclude=exclude)
                 background = Background(order_data=order_data,
                                         y_offset=y_offset)
