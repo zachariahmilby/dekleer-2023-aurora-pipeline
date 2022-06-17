@@ -135,18 +135,18 @@ def make_1d_spectrum_quality_assurance_graphic(save_path: str | Path,
     """
     Save a quality assurance graphic for the 1D line spectrum.
     """
+
     average_wavelength = order_data.aurora_wavelengths.mean()
-    file = Path(save_path, f'{average_wavelength:.1f}', 'spectra_1D.txt')
-    data = pd.read_csv(file, sep=' ')
-    dates = data.keys()[1:]
-    for date in dates:
+    files = sorted(Path(save_path, f'{average_wavelength:.1f}',
+                        'spectra_1D').glob('*.txt'))
+    for file in files:
+        wavelength, spectrum = np.genfromtxt(file, unpack=True)
         fig, axis = plt.subplots(1, 1, figsize=(9, 2),
                                  constrained_layout=True)
-        smoothed_data = convolve(data[date], Gaussian1DKernel(stddev=1))
-        axis.plot(data['wavelength_[nm]'], data[date],
-                  color=color_dict['grey'], linewidth=0.5,
-                  label='Not Smoothed')
-        axis.plot(data['wavelength_[nm]'], smoothed_data, color='k',
+        smoothed_data = convolve(spectrum, Gaussian1DKernel(stddev=1))
+        axis.plot(wavelength, spectrum, color=color_dict['grey'],
+                  linewidth=0.5, label='Not Smoothed')
+        axis.plot(wavelength, smoothed_data, color='k',
                   label=r'Smoothed ($\sigma = 1\,\mathrm{bin}$)')
         [axis.axvline(wavelength, color=color_dict['red'], linestyle='--',
                       linewidth=0.5)
@@ -156,10 +156,6 @@ def make_1d_spectrum_quality_assurance_graphic(save_path: str | Path,
         axis.set_xlim(order_data.wavelength_edges[0].value,
                       order_data.wavelength_edges[-1].value)
         axis.set_ylabel(r'Spectral Brightness [$\mathrm{R\,nm^{-1}}$]')
-        filename = date + '.pdf'
-        savepath = Path(save_path, f'{average_wavelength:.1f}',
-                        'spectra_1D', filename)
-        if not savepath.parent.exists():
-            savepath.parent.mkdir(parents=True)
+        savepath = str(file).replace('.txt', '.pdf')
         plt.savefig(savepath)
         plt.close(fig)

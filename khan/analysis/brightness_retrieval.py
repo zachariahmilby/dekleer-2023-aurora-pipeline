@@ -543,6 +543,20 @@ class AuroraBrightness:
         average_background_noise *= noise_factor
         return background_noises * u.R, average_background_noise * u.R
 
+    def _save_line_spectra(self, wavelengths: u.Quantity,
+                           spectrum: u.Quantity, filename: str):
+        """
+        Save line spectra to a text file.
+        """
+        average_wavelength = self._order_data.aurora_wavelengths.mean()
+        savepath = Path(self._save_path, f'{average_wavelength:.1f}',
+                        'spectra_1D', filename)
+        if not savepath.parent.exists():
+            savepath.parent.mkdir(parents=True)
+        with open(savepath, 'w') as file:
+            for wavelength, brightness in zip(wavelengths, spectrum):
+                file.write(f'{wavelength.value} {brightness.value}\n')
+
     def _make_line_spectra(self) -> (np.ndarray, str):
         """
         Sum the brightness over the vertical aperture bins to make a line
@@ -551,19 +565,18 @@ class AuroraBrightness:
         n_obs, ny, nx = self._order_data.target_images.shape
         rows = np.unique(
             np.where(np.isnan(self._background.target_mask))[0])
-        keys = ['wavelength_[nm]']
-        keys.extend(self._order_data.filenames)
-        keys.extend(['average'])
-        keys = ' '.join(keys)
-        data = np.zeros((nx, n_obs+2))
-        data[:, 0] = self._order_data.wavelength_centers.value
         for obs in range(n_obs):
-            data[:, obs+1] = np.nansum(self._calibrated_images[obs, rows]
-                                       / self._get_dwavelength(), axis=0)
-        data[:, -1] = np.nansum(
-            self._average_calibrated_image[rows] / self._get_dwavelength(),
-            axis=0)
-        return data, keys
+            spectrum = np.nansum(self._calibrated_images[obs, rows]
+                                 / self._get_dwavelength(), axis=0)
+            filename = self._order_data.filenames[obs].replace('.fits.gz',
+                                                               '.txt')
+            self._save_line_spectra(self._order_data.wavelength_centers,
+                                    spectrum, filename)
+        average_spectrum = np.nansum(
+            self._average_calibrated_image[rows]
+            / self._get_dwavelength(), axis=0)
+        self._save_line_spectra(self._order_data.wavelength_centers,
+                                average_spectrum, 'average.txt')
 
     def save_results(self):
         """
@@ -623,10 +636,4 @@ class AuroraBrightness:
                        f'{bg_avg:.2f} '
                        f'---\n')
 
-        # line spectra
-        filename = 'spectra_1D.txt'
-        savepath = Path(self._save_path, f'{average_wavelength:.1f}', filename)
-        if not savepath.parent.exists():
-            savepath.parent.mkdir(parents=True)
-        data, keys = self._make_line_spectra()
-        np.savetxt(savepath, data, header=keys, comments='')
+        self._make_line_spectra()
