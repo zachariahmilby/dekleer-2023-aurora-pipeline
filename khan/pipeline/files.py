@@ -12,6 +12,7 @@ import warnings
 from tqdm import tqdm
 
 from khan.common import jovian_naif_codes
+from khan.graphics import data_cmap
 
 
 class FilesDirectory:
@@ -92,7 +93,7 @@ class FilesDirectory:
         norm = colors.LogNorm(
             vmin=np.nanpercentile(image[np.where(image > 0)], 1),
             vmax=np.nanpercentile(image[np.where(image > 0)], 99))
-        axes[1].pcolormesh(image, norm=norm, rasterized=True)
+        axes[1].pcolormesh(image, cmap=data_cmap(), norm=norm, rasterized=True)
         [ax.set_xticks([]) for ax in axes]
         [ax.set_yticks([]) for ax in axes]
         [ax.set_frame_on(False) for ax in axes]
@@ -255,8 +256,8 @@ class SelectedFiles(FilesDirectory):
     def _make_observation_planning_graphic(self, date: Time):
         from obsplan import EclipsePrediction
         date = Time(date, format='isot', scale='utc')
-        start_time = date - 1 * u.day
-        end_time = date + 1 * u.day
+        start_time = date - 2 * u.day
+        end_time = date + 2 * u.day
         eclipse_prediction = EclipsePrediction(
             starting_datetime=start_time.to_value('iso', subfmt='date'),
             ending_datetime=end_time.to_value('iso', subfmt='date'),
