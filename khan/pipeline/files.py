@@ -89,10 +89,10 @@ class FilesDirectory:
         fig, axes = plt.subplots(2, 1, figsize=(6, 4),
                                  gridspec_kw={'height_ratios': [1, 3]},
                                  constrained_layout=True)
-        axes[1].pcolormesh(
-            image, norm=colors.LogNorm(vmin=np.nanpercentile(image, 1),
-                                       vmax=np.nanpercentile(image, 99)),
-            rasterized=True)
+        norm = colors.LogNorm(
+            vmin=np.nanpercentile(image[np.where(image > 0)], 1),
+            vmax=np.nanpercentile(image[np.where(image > 0)], 99))
+        axes[1].pcolormesh(image, norm=norm, rasterized=True)
         [ax.set_xticks([]) for ax in axes]
         [ax.set_yticks([]) for ax in axes]
         [ax.set_frame_on(False) for ax in axes]
