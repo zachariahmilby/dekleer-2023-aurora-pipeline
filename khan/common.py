@@ -209,3 +209,22 @@ def aurora_line_wavelengths() -> [u.Quantity]:
             [777.1944, 777.4166, 777.5388] * u.nm,
             [844.625, 844.636, 844.676] * u.nm,
             [656.2852] * u.nm]
+
+
+def jovian_naif_codes() -> dict:
+    """
+    Navigation and Ancillary Information Facility (NAIF) unique ID codes for
+    major Jovian system bodies.
+
+    Returns
+    -------
+    A dictionary with the codes accessible by the name of the object: Jupiter,
+    Io, Europa, Ganymede or Callisto.
+    """
+    return {
+        'Jupiter': '599',
+        'Io': '501',
+        'Europa': '502',
+        'Ganymede': '503',
+        'Callisto': '504',
+    }
