@@ -16,7 +16,8 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
                             save_path: str | Path,
                             seeing: float = 1,
                             exclude: dict = None,
-                            y_offset: int = 0):
+                            y_offset: int = 0,
+                            linear_component: bool = False):
     """
     Retrieve the brightnesses for any auroral lines which appear in the
     extracted orders. Saves data to the file for plotting or other purposes and
@@ -45,6 +46,10 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
         Number of bins to offset the center of the aperture from the center
         of the order. Useful if the spatial position of the target isn't in
         the exact center.
+    linear_component : bool
+        Whether or not to add a linear component to the background fit. If the
+        rectified order still has some shear, this component could help account
+        for it.
 
     Returns
     -------
@@ -54,21 +59,22 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for wavelengths in aurora_line_wavelengths():
-            try:
-                order_data = OrderData(reduced_data_path=reduced_data_path,
-                                       wavelengths=wavelengths,
-                                       seeing=seeing * u.arcsec,
-                                       exclude=exclude)
-                background = Background(order_data=order_data,
-                                        y_offset=y_offset)
-                aurora_brightness = AuroraBrightness(order_data=order_data,
-                                                     background=background,
-                                                     save_path=save_path)
-                make_background_subtraction_quality_assurance_graphic(
-                    order_data=order_data, background=background,
-                    save_path=save_path, y_offset=y_offset)
-                aurora_brightness.save_results()
-                make_1d_spectrum_quality_assurance_graphic(
-                    save_path=save_path, order_data=order_data)
-            except ValueError:
-                continue
+            # try:
+            order_data = OrderData(reduced_data_path=reduced_data_path,
+                                   wavelengths=wavelengths,
+                                   seeing=seeing * u.arcsec,
+                                   exclude=exclude)
+            background = Background(order_data=order_data,
+                                    y_offset=y_offset,
+                                    linear_component=linear_component)
+            aurora_brightness = AuroraBrightness(order_data=order_data,
+                                                 background=background,
+                                                 save_path=save_path)
+            make_background_subtraction_quality_assurance_graphic(
+                order_data=order_data, background=background,
+                save_path=save_path, y_offset=y_offset)
+            aurora_brightness.save_results()
+            make_1d_spectrum_quality_assurance_graphic(
+                save_path=save_path, order_data=order_data)
+            # except ValueError:
+            #     continue

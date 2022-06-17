@@ -234,9 +234,11 @@ class Background:
     This class generates a fitted background and provides background-subtracted
     data images.
     """
-    def __init__(self, order_data: OrderData, y_offset: int = 0):
+    def __init__(self, order_data: OrderData, y_offset: int = 0,
+                 linear_component: bool = False):
         self._order_data = order_data
         self._y_offset = y_offset
+        self._linear_component = linear_component
         self._target_mask, self._background_mask = self._make_masks()
         self._backgrounds, self._average_background = \
             self._construct_background()
@@ -330,24 +332,45 @@ class Background:
             background = np.zeros(masked_image.shape)
             profile = background_profiles[obs]
             constant = np.ones(profile.shape[0])
-            fit_profile = np.array([constant, profile]).T
+            linear = None
+            if self._linear_component:
+                linear = np.arange(profile.shape[0])
+                fit_profile = np.array([constant, linear, profile]).T
+            else:
+                fit_profile = np.array([constant, profile]).T
             for col in range(nx):
                 result = sm.OLS(masked_image[:, col].value, fit_profile,
                                 missing='drop').fit()
                 best_fit_constant = result.params[0]
-                best_fit_profile = (result.params[1] * profile)
+                if self._linear_component:
+                    best_fit_profile = (result.params[1] * linear
+                                        + result.params[2] * profile)
+                else:
+                    best_fit_profile = (result.params[1] * profile)
                 background[:, col] = best_fit_constant + best_fit_profile
             backgrounds.append(background)
         average_masked_image = \
             self._order_data.average_target_image * self._target_mask
         average_background = np.zeros(average_masked_image.shape)
         constant = np.ones(average_background_profile.shape[0])
-        fit_profile = np.array([constant, average_background_profile]).T
+        linear = None
+        if self._linear_component:
+            linear = np.arange(average_background_profile.shape[0])
+            fit_profile = np.array([constant, linear,
+                                    average_background_profile]).T
+        else:
+            fit_profile = np.array([constant, average_background_profile]).T
         for col in range(nx):
             result = sm.OLS(average_masked_image[:, col].value, fit_profile,
                             missing='drop').fit()
             best_fit_constant = result.params[0]
-            best_fit_profile = result.params[1] * average_background_profile
+            if self._linear_component:
+                best_fit_profile = (result.params[1] * linear
+                                    + result.params[2]
+                                    * average_background_profile)
+            else:
+                best_fit_profile = (result.params[1]
+                                    * average_background_profile)
             average_background[:, col] = best_fit_constant + best_fit_profile
         return (np.array(backgrounds) * u.electron / u.s,
                 average_background * u.electron / u.s)

@@ -57,22 +57,21 @@ def make_background_subtraction_quality_assurance_graphic(
         norm_image = order_data.target_images[obs].value
         norm = colors.Normalize(vmin=np.percentile(norm_image, 1),
                                 vmax=np.percentile(norm_image, 99))
-        kwargs = dict(cmap=data_cmap(), rasterized=True)
+        kwargs = dict(cmap=data_cmap(), norm=norm, rasterized=True)
         fig, axes = plt.subplots(4, 1, figsize=(9, 3*size_scale), sharex='all',
                                  sharey='all', constrained_layout=True)
-        axes[0].pcolormesh(xe, ye, order_data.target_images[obs], norm=norm,
-                           **kwargs)
+        axes[0].pcolormesh(xe, ye, order_data.target_images[obs], **kwargs)
         _plot_aperture(axes[0], order_data=order_data, y_offset=y_offset)
         axes[0].set_title(r'Raw Image [electrons/s]')
-        axes[1].pcolormesh(xe, ye, background.backgrounds[obs], norm=norm,
-                           **kwargs)
+        axes[1].pcolormesh(xe, ye, background.backgrounds[obs], **kwargs)
         axes[1].set_title(r'Fitted Background [electrons/s]')
-        axes[2].pcolormesh(xe, ye, background_subtracted_image, vmin=0,
-                           **kwargs)
+        norm_image = background_subtracted_image.value
+        norm = colors.Normalize(vmin=0, vmax=np.percentile(norm_image, 99))
+        kwargs = dict(cmap=data_cmap(), norm=norm, rasterized=True)
+        axes[2].pcolormesh(xe, ye, background_subtracted_image, **kwargs)
         _plot_aperture(axes[2], order_data=order_data, y_offset=y_offset)
         axes[2].set_title(r'Background-Subtracted Image [electrons/s]')
-        axes[3].pcolormesh(xe, ye, smoothed_image, vmin=0,
-                           **kwargs)
+        axes[3].pcolormesh(xe, ye, smoothed_image, **kwargs)
         _plot_aperture(axes[3], order_data=order_data, y_offset=y_offset)
         axes[3].set_title(r'Smoothed Background-Subtracted Image '
                           r'($\sigma =1\,\mathrm{bin}$) [electrons/s]')
@@ -97,23 +96,22 @@ def make_background_subtraction_quality_assurance_graphic(
     norm_image = order_data.average_target_image.value
     norm = colors.Normalize(vmin=np.percentile(norm_image, 1),
                             vmax=np.percentile(norm_image, 99))
-    kwargs = dict(cmap=data_cmap(), rasterized=True)
+    kwargs = dict(cmap=data_cmap(), norm=norm, rasterized=True)
     fig, axes = plt.subplots(4, 1, figsize=(9, 3*size_scale), sharex='all',
                              sharey='all', constrained_layout=True)
-    axes[0].pcolormesh(xe, ye, order_data.average_target_image, norm=norm,
-                       **kwargs)
+    axes[0].pcolormesh(xe, ye, order_data.average_target_image, **kwargs)
     _plot_aperture(axes[0], order_data=order_data, y_offset=y_offset)
     axes[0].set_title(r'Average Raw Image [electrons/s]')
-    axes[1].pcolormesh(xe, ye, background.average_background, norm=norm,
-                       **kwargs)
+    axes[1].pcolormesh(xe, ye, background.average_background, **kwargs)
     axes[1].set_title(r'Fitted Background [electrons/s]')
+    norm_image = background_subtracted_image.value
+    norm = colors.Normalize(vmin=0, vmax=np.percentile(norm_image, 99))
+    kwargs = dict(cmap=data_cmap(), norm=norm, rasterized=True)
     axes[2].pcolormesh(xe, ye, (order_data.average_target_image
-                                - background.average_background), vmin=0,
-                       **kwargs)
+                                - background.average_background), **kwargs)
     _plot_aperture(axes[2], order_data=order_data, y_offset=y_offset)
     axes[2].set_title(r'Background-Subtracted Average Image [electrons/s]')
-    axes[3].pcolormesh(xe, ye, smoothed_image, vmin=0,
-                       **kwargs)
+    axes[3].pcolormesh(xe, ye, smoothed_image, **kwargs)
     _plot_aperture(axes[3], order_data=order_data, y_offset=y_offset)
     axes[3].set_title(r'Smoothed Background-Subtracted Average Image '
                       r'($\sigma =1\,\mathrm{bin}$) [electrons/s]')
