@@ -405,29 +405,34 @@ def reduce_data(science_target_name: str, guide_satellite_name: str,
     # make master bias frame
     print('   Making master bias...')
     master_bias = MasterBias(source_data_path)
-    make_master_calibration_image_quality_assurance_graphic(
-        master_bias, save_path, 'master_bias.pdf', bias_cmap())
+    if quality_assurance:
+        make_master_calibration_image_quality_assurance_graphic(
+            master_bias, save_path, 'master_bias.pdf', bias_cmap())
 
     print('   Making master flat...')
     master_flat = MasterFlat(source_data_path, master_bias=master_bias)
-    make_master_calibration_image_quality_assurance_graphic(
-        master_flat, save_path, 'master_flat.pdf', flat_cmap(), cbar=False)
+    if quality_assurance:
+        make_master_calibration_image_quality_assurance_graphic(
+            master_flat, save_path, 'master_flat.pdf', flat_cmap(), cbar=False)
 
     print('   Making master arc...')
     master_arc = MasterArc(source_data_path, master_bias=master_bias)
-    make_master_calibration_image_quality_assurance_graphic(
-        master_arc, save_path, 'master_arc.pdf', arc_cmap())
+    if quality_assurance:
+        make_master_calibration_image_quality_assurance_graphic(
+            master_arc, save_path, 'master_arc.pdf', arc_cmap())
 
     print('   Making master trace...')
     master_trace = MasterTrace(source_data_path, master_bias=master_bias)
-    make_master_calibration_image_quality_assurance_graphic(
-        master_trace, save_path, 'master_trace.pdf', data_cmap())
+    if quality_assurance:
+        make_master_calibration_image_quality_assurance_graphic(
+            master_trace, save_path, 'master_trace.pdf', data_cmap())
 
     # find order edges
     print('   Tracing order edges...')
     order_traces = OrderTraces(master_trace, master_flat)
-    make_order_trace_quality_assurance_graphic(order_traces, master_flat,
-                                               save_path)
+    if quality_assurance:
+        make_order_trace_quality_assurance_graphic(order_traces, master_flat,
+                                                   save_path)
 
     # correct instrument artifacts
     print('   Removing instrument artifacts from flux calibration images...')
@@ -466,8 +471,9 @@ def reduce_data(science_target_name: str, guide_satellite_name: str,
     # wavelength solution calculation
     print('   Calculating wavelength solution...')
     wavelength_solution = WavelengthSolution(arc_lamp_images)
-    make_wavelength_solution_quality_assurance_graphic(wavelength_solution,
-                                                       save_path)
+    if quality_assurance:
+        make_wavelength_solution_quality_assurance_graphic(wavelength_solution,
+                                                           save_path)
 
     # extract orders with wavelength solutions
     print('   Extracting orders with wavelength solutions...')
