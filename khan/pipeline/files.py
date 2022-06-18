@@ -158,7 +158,7 @@ class RawFiles(FilesDirectory):
                 }
         return data, image
 
-    def process_files(self):
+    def process_files(self, make_quicklook: bool = True):
         """
         Wrapper function to make the quicklooks and save the summary CSV.
         """
@@ -167,7 +167,8 @@ class RawFiles(FilesDirectory):
         for file in tqdm(self._get_files()):
             with fits.open(file) as hdul:
                 data, image = self._get_information(hdul)
-                self._save_quicklook(image, data)
+                if make_quicklook:
+                    self._save_quicklook(image, data)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 df = df.append(data, ignore_index=True)

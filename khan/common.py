@@ -203,12 +203,19 @@ def aurora_line_wavelengths() -> [u.Quantity]:
     -------
     A list of aurora line wavelengths as Astropy quantities.
     """
-    return [[557.7330] * u.nm,
-            [630.0304] * u.nm,
-            [636.3776] * u.nm,
-            [777.1944, 777.4166, 777.5388] * u.nm,
-            [844.625, 844.636, 844.676] * u.nm,
-            [656.2852] * u.nm]
+    return [
+        [557.7330] * u.nm,  # neutral O
+        [588.9950, 589.5924] * u.nm,  # neutral Na
+        [630.0304] * u.nm,  # neutral O
+        [636.3776] * u.nm,  # neutral O
+        [656.2852] * u.nm,  # neutral H
+        [772.5046] * u.nm,  # neutral S
+        [766.4899] * u.nm,  # neutral K
+        [777.1944, 777.4166, 777.5388] * u.nm,  # neutral O
+        [844.625, 844.636, 844.676] * u.nm,  # neutral O
+        [872.7126] * u.nm,  # neutral C
+        [837.594] * u.nm,  # neutral Cl
+        ]
 
 
 def jovian_naif_codes() -> dict:

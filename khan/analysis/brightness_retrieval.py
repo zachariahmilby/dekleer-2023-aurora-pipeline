@@ -18,7 +18,8 @@ class OrderData:
     """
     def __init__(self, reduced_data_path: str | Path,
                  wavelengths: [u.Quantity], seeing: u.Quantity = 1 * u.arcsec,
-                 exclude: dict = None):
+                 exclude: dict = None, bottom_trim: int = 2,
+                 top_trim: int = 2):
         """
         Parameters
         ----------
@@ -36,6 +37,12 @@ class OrderData:
             wavelength. The key to the dictionary has to match the average
             wavelength to 1 decimal place, e.g., '777.4 nm'. The value should
             be a list of frame numbers to exclude, starting from zero.
+        top_trim: int
+            How many rows to remove from the top edge of the order to eliminate
+            artifacts from rectification. Default is 2.
+        bottom_trim: int
+            How many rows to remove from the bottom edge of the order to
+            eliminate artifacts from rectification. Default is 2.
         """
         self._science_observations_path = Path(
             reduced_data_path, 'science_observations.fits.gz')
@@ -44,6 +51,8 @@ class OrderData:
         self._wavelengths = wavelengths
         self._seeing = seeing
         self._exclude = exclude
+        self._top = top_trim
+        self._bottom = bottom_trim
         self._order_index = self._find_order_with_wavelengths()
         self._data = self._retrieve_data_from_fits()
 
@@ -103,18 +112,25 @@ class OrderData:
                 ) * u.m / u.s
             data = {
                 'target_images':
-                    hdul['PRIMARY'].data[:, self._order_index, 2:-2,
-                                         left:right]
+                    hdul['PRIMARY'].data[:, self._order_index,
+                                         self._bottom:-self._top, left:right]
                     * u.electron / u.s,
                 'trace_images':
                     hdul['GUIDE_SATELLITE'].data[:, self._order_index,
-                                                 2:-2, left:right]
+                                                 self._bottom:-self._top,
+                                                 left:right]
                     * u.electron / u.s,
-                'wavelength_centers': doppler_shift_wavelengths(
+                'rest_wavelength_centers':
+                    hdul['BIN_CENTER_WAVELENGTHS'].data[self._order_index,
+                                                        left:right] * u.nm,
+                'rest_wavelength_edges':
+                    hdul['BIN_EDGE_WAVELENGTHS'].data[self._order_index,
+                                                      left:right + 1] * u.nm,
+                'shifted_wavelength_centers': doppler_shift_wavelengths(
                     hdul['BIN_CENTER_WAVELENGTHS'].data[self._order_index,
                                                         left:right] * u.nm,
                     target_relative_velocity),
-                'wavelength_edges': doppler_shift_wavelengths(
+                'shifted_wavelength_edges': doppler_shift_wavelengths(
                     hdul['BIN_EDGE_WAVELENGTHS'].data[self._order_index,
                                                       left:right+1] * u.nm,
                     target_relative_velocity),
@@ -139,10 +155,11 @@ class OrderData:
             }
         with fits.open(self._flux_calibration_path) as hdul:
             data['flux_calibration_images'] = \
-                hdul['PRIMARY'].data[:, self._order_index, 2:-2, left:right] \
+                hdul['PRIMARY'].data[:, self._order_index,
+                                     self._bottom:-self._top, left:right] \
                 * u.electron / u.s
             data['jupiter_distance'] = \
-                (np.mean(hdul['observation_information'].data['distance'])
+                (np.mean(hdul['OBSERVATION_INFORMATION'].data['DISTANCE'])
                  * u.au)
         return data
 
@@ -169,12 +186,20 @@ class OrderData:
         return self._wavelengths
 
     @property
-    def wavelength_centers(self) -> u.Quantity:
-        return self._data['wavelength_centers']
+    def rest_wavelength_centers(self) -> u.Quantity:
+        return self._data['rest_wavelength_centers']
 
     @property
-    def wavelength_edges(self) -> u.Quantity:
-        return self._data['wavelength_edges']
+    def rest_wavelength_edges(self) -> u.Quantity:
+        return self._data['rest_wavelength_edges']
+
+    @property
+    def shifted_wavelength_centers(self) -> u.Quantity:
+        return self._data['shifted_wavelength_centers']
+
+    @property
+    def shifted_wavelength_edges(self) -> u.Quantity:
+        return self._data['shifted_wavelength_edges']
 
     @property
     def echelle_order(self) -> int:
@@ -257,7 +282,8 @@ class Background:
         """
         n_obs, ny, nx = self._order_data.target_images.shape
         wavelength_ind = \
-            np.abs(self._order_data.wavelength_centers - wavelength).argmin()
+            np.abs(self._order_data.shifted_wavelength_centers
+                   - wavelength).argmin()
         horizontal_bins_arcsec = ((np.linspace(0, nx, nx + 1) - wavelength_ind)
                                   * self._order_data.spectral_bin_scale.value)
         vertical_bins_arcsec = (
@@ -472,9 +498,9 @@ class AuroraBrightness:
         """
         Calculate wavelength dispersion-per-bin.
         """
-        ind = np.abs(self._order_data.wavelength_centers
+        ind = np.abs(self._order_data.shifted_wavelength_centers
                      - self._order_data.aurora_wavelengths.mean()).argmin()
-        return np.diff(self._order_data.wavelength_edges)[ind] / u.bin
+        return np.diff(self._order_data.shifted_wavelength_edges)[ind] / u.bin
 
     def _convert_target_to_flux_per_disk(self, target_flux):
         """
@@ -566,7 +592,8 @@ class AuroraBrightness:
         average_background_noise *= noise_factor
         return background_noises * u.R, average_background_noise * u.R
 
-    def _save_line_spectra(self, wavelengths: u.Quantity,
+    def _save_line_spectra(self, unshifted_wavelengths: u.Quantity,
+                           shifted_wavelengths: u.Quantity,
                            spectrum: u.Quantity, filename: str):
         """
         Save line spectra to a text file.
@@ -577,8 +604,10 @@ class AuroraBrightness:
         if not savepath.parent.exists():
             savepath.parent.mkdir(parents=True)
         with open(savepath, 'w') as file:
-            for wavelength, brightness in zip(wavelengths, spectrum):
-                file.write(f'{wavelength.value} {brightness.value}\n')
+            for i in range(len(spectrum)):
+                file.write(f'{unshifted_wavelengths[i].value} '
+                           f'{shifted_wavelengths[i].value} '
+                           f'{spectrum[i].value}\n')
 
     def _make_line_spectra(self) -> (np.ndarray, str):
         """
@@ -593,12 +622,15 @@ class AuroraBrightness:
                                  / self._get_dwavelength(), axis=0)
             filename = self._order_data.filenames[obs].replace('.fits.gz',
                                                                '.txt')
-            self._save_line_spectra(self._order_data.wavelength_centers,
-                                    spectrum, filename)
+            self._save_line_spectra(
+                self._order_data.rest_wavelength_centers,
+                self._order_data.shifted_wavelength_centers,
+                spectrum, filename)
         average_spectrum = np.nansum(
             self._average_calibrated_image[rows]
             / self._get_dwavelength(), axis=0)
-        self._save_line_spectra(self._order_data.wavelength_centers,
+        self._save_line_spectra(self._order_data.rest_wavelength_centers,
+                                self._order_data.shifted_wavelength_centers,
                                 average_spectrum, 'average.txt')
 
     def save_results(self):

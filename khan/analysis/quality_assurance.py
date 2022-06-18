@@ -4,7 +4,6 @@ import astropy.units as u
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from astropy.convolution import convolve, Gaussian1DKernel, Gaussian2DKernel
 
 from khan.analysis.brightness_retrieval import OrderData, Background
@@ -17,7 +16,8 @@ def _plot_aperture(axis, order_data: OrderData, y_offset: int = 0):
     """
     theta = np.linspace(0, 360, 3601) * u.degree
     for wavelength in order_data.aurora_wavelengths:
-        x0 = (np.abs(order_data.wavelength_centers - wavelength).argmin()
+        x0 = (np.abs(order_data.shifted_wavelength_centers
+                     - wavelength).argmin()
               * order_data.spectral_bin_scale * u.bin)
         y0 = y_offset * order_data.spatial_bin_scale * u.bin
         r = order_data.target_radius + order_data.seeing
@@ -80,7 +80,7 @@ def make_background_subtraction_quality_assurance_graphic(
         [axis.set_yticks([]) for axis in axes]
         filename = order_data.filenames[obs].replace('.fits.gz', '.pdf')
         savepath = Path(save_path, f'{average_wavelength:.1f}',
-                        'background_subtraction', filename)
+                        'spectra_2D', filename)
         if not savepath.parent.exists():
             savepath.parent.mkdir(parents=True)
         [axis.set_aspect('equal') for axis in axes]
@@ -120,7 +120,7 @@ def make_background_subtraction_quality_assurance_graphic(
     [axis.set_yticks([]) for axis in axes]
     filename = 'average.pdf'
     savepath = Path(save_path, f'{average_wavelength:.1f}',
-                    'background_subtraction', filename)
+                    'spectra_2D', filename)
     if not savepath.parent.exists():
         savepath.parent.mkdir(parents=True)
     [axis.set_aspect('equal') for axis in axes]
@@ -138,21 +138,21 @@ def make_1d_spectrum_quality_assurance_graphic(save_path: str | Path,
     files = sorted(Path(save_path, f'{average_wavelength:.1f}',
                         'spectra_1D').glob('*.txt'))
     for file in files:
-        wavelength, spectrum = np.genfromtxt(file, unpack=True)
+        _, shifted_wavelength, spectrum = np.genfromtxt(file, unpack=True)
         fig, axis = plt.subplots(1, 1, figsize=(9, 2),
                                  constrained_layout=True)
         smoothed_data = convolve(spectrum, Gaussian1DKernel(stddev=1))
-        axis.plot(wavelength, spectrum, color=color_dict['grey'],
+        axis.plot(shifted_wavelength, spectrum, color=color_dict['grey'],
                   linewidth=0.5, label='Not Smoothed')
-        axis.plot(wavelength, smoothed_data, color='k',
+        axis.plot(shifted_wavelength, smoothed_data, color='k',
                   label=r'Smoothed ($\sigma = 1\,\mathrm{bin}$)')
         [axis.axvline(wavelength, color=color_dict['red'], linestyle='--',
                       linewidth=0.5)
          for wavelength in order_data.aurora_wavelengths.value]
         axis.legend(loc='upper left', frameon=False)
         axis.set_xlabel('Wavelength [nm]')
-        axis.set_xlim(order_data.wavelength_edges[0].value,
-                      order_data.wavelength_edges[-1].value)
+        axis.set_xlim(order_data.shifted_wavelength_edges[0].value,
+                      order_data.shifted_wavelength_edges[-1].value)
         axis.set_ylabel(r'Spectral Brightness [$\mathrm{R\,nm^{-1}}$]')
         savepath = str(file).replace('.txt', '.pdf')
         plt.savefig(savepath)

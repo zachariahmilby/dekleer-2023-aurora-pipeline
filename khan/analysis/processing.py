@@ -17,7 +17,9 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
                             seeing: float = 1,
                             exclude: dict = None,
                             y_offset: int = 0,
-                            linear_component: bool = False):
+                            linear_component: bool = False,
+                            top_trim: int = 2,
+                            bottom_trim: int = 2):
     """
     Retrieve the brightnesses for any auroral lines which appear in the
     extracted orders. Saves data to the file for plotting or other purposes and
@@ -50,6 +52,12 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
         Whether or not to add a linear component to the background fit. If the
         rectified order still has some shear, this component could help account
         for it.
+    top_trim: int
+        How many rows to remove from the top edge of the order to eliminate
+        artifacts from rectification. Default is 2.
+    bottom_trim: int
+        How many rows to remove from the bottom edge of the order to
+        eliminate artifacts from rectification. Default is 2.
 
     Returns
     -------
@@ -63,7 +71,8 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
                 order_data = OrderData(reduced_data_path=reduced_data_path,
                                        wavelengths=wavelengths,
                                        seeing=seeing * u.arcsec,
-                                       exclude=exclude)
+                                       exclude=exclude, top_trim=top_trim,
+                                       bottom_trim=bottom_trim)
                 background = Background(order_data=order_data,
                                         y_offset=y_offset,
                                         linear_component=linear_component)
