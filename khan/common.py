@@ -194,28 +194,30 @@ def get_solar_spectral_radiance(value: bool = False) -> dict:
                         u.m ** 2 * u.nm * u.sr)}
 
 
-def aurora_line_wavelengths() -> [u.Quantity]:
+def aurora_line_wavelengths(extended: bool = False) -> [u.Quantity]:
     """
     Retrieve a list of all of the aurora wavelengths. Each is in a sublist to
-    keep triplets together.
+    keep closely-spaced doublets and triplets together.
 
     Returns
     -------
     A list of aurora line wavelengths as Astropy quantities.
     """
-    return [
+    wavelengths = [
         [557.7330] * u.nm,  # neutral O
-        [588.9950, 589.5924] * u.nm,  # neutral Na
         [630.0304] * u.nm,  # neutral O
         [636.3776] * u.nm,  # neutral O
         [656.2852] * u.nm,  # neutral H
-        [772.5046] * u.nm,  # neutral S
-        [766.4899] * u.nm,  # neutral K
         [777.1944, 777.4166, 777.5388] * u.nm,  # neutral O
         [844.625, 844.636, 844.676] * u.nm,  # neutral O
-        [872.7126] * u.nm,  # neutral C
-        [837.594] * u.nm,  # neutral Cl
         ]
+    if extended:
+        wavelengths.append([588.9950, 589.5924] * u.nm)  # neutral Na
+        wavelengths.append([772.5046] * u.nm)  # neutral S
+        wavelengths.append([766.4899] * u.nm)  # neutral K
+        wavelengths.append([872.7126] * u.nm)  # neutral C
+        wavelengths.append([837.594] * u.nm)  # neutral Cl
+    return wavelengths
 
 
 def jovian_naif_codes() -> dict:
@@ -235,3 +237,63 @@ def jovian_naif_codes() -> dict:
         'Ganymede': '503',
         'Callisto': '504',
     }
+
+
+def format_uncertainty(quantity: int | float,
+                       uncertainty: int | float) -> (float, float):
+    """
+    Reformats a quantity and its corresponding uncertainty to a proper number
+    of decimal places. For uncertainties starting with 1, it allows two
+    significant digits in the uncertainty. For 2-9, it allows only one. It
+    scales the value to match the precision of the uncertainty.
+
+    Parameters
+    ----------
+    quantity : float
+        A measured quantity.
+    uncertainty : float
+        The measured quantity's uncertainty.
+
+    Returns
+    -------
+    The correctly-formatted value and uncertainty.
+
+    Examples
+    --------
+    Often fitting algorithms will report uncertainties with way more precision
+    than appropriate:
+    >>> format_uncertainty(1.023243, 0.563221)
+    (1.0, 0.6)
+
+    If the uncertainty is larger than 1.9, it returns the numbers as
+    appropriately-rounded integers instead of floats, to avoid giving the
+    impression of greater precision than really exists:
+    >>> format_uncertainty(134523, 122)
+    (134520, 120)
+
+    It can handle positive or negative quantities (but uncertainties should
+    always be positive by definition):
+    >>> format_uncertainty(-10.2, 1.1)
+    (-10.2, 1.1)
+
+    >>> format_uncertainty(10.2, -2.1)
+    Traceback (most recent call last):
+     ...
+    ValueError: Uncertainty must be a positive number.
+    """
+    if np.sign(uncertainty) == -1.0:
+        raise ValueError('Uncertainty must be a positive number.')
+    if f'{uncertainty:#.1e}'[0] == '1':
+        unc = float(f'{uncertainty:#.1e}')
+        one_more = 1
+        order = int(f'{uncertainty:#.1e}'.split('e')[1])
+    else:
+        unc = float(f'{uncertainty:#.0e}')
+        one_more = 0
+        order = int(f'{uncertainty:#.0e}'.split('e')[1])
+    mag_diff = int(np.floor(np.log10(abs(quantity))) - np.floor(np.log10(unc)))
+    val = f'{quantity:.{mag_diff + one_more}e}'
+    if (np.sign(order) == -1) or ((order == 0) & one_more == 1):
+        return float(val), float(unc)
+    else:
+        return int(float(val)), int(float(unc))
