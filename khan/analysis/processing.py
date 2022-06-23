@@ -7,7 +7,8 @@ from khan.analysis.brightness_retrieval import OrderData, Background, \
 from khan.analysis.quality_assurance import \
     make_background_subtraction_quality_assurance_graphic, \
     make_1d_spectrum_quality_assurance_graphic
-from khan.common import aurora_line_wavelengths
+from khan.common import aurora_line_wavelengths, \
+    emission_line_strengths
 
 import warnings
 
@@ -19,7 +20,8 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
                             y_offset: int = 0,
                             linear_component: bool = False,
                             top_trim: int = 2,
-                            bottom_trim: int = 2):
+                            bottom_trim: int = 2,
+                            additional_wavelengths: bool = False):
     """
     Retrieve the brightnesses for any auroral lines which appear in the
     extracted orders. Saves data to the file for plotting or other purposes and
@@ -58,6 +60,9 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
     bottom_trim: int
         How many rows to remove from the bottom edge of the order to
         eliminate artifacts from rectification. Default is 2.
+    additional_wavelengths : bool
+        Set to true if you want to (attempt to) retrieve brightnesses for
+        additional auroral lines.
 
     Returns
     -------
@@ -66,10 +71,15 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        for wavelengths in aurora_line_wavelengths():
+        wavelengths = aurora_line_wavelengths(extended=additional_wavelengths)
+        line_strengths = emission_line_strengths(
+            extended=additional_wavelengths)
+        for i in range(len(wavelengths)):
             try:
                 order_data = OrderData(reduced_data_path=reduced_data_path,
-                                       wavelengths=wavelengths,
+                                       wavelengths=wavelengths[i],
+                                       emission_line_strengths=
+                                       line_strengths[i],
                                        seeing=seeing * u.arcsec,
                                        exclude=exclude, top_trim=top_trim,
                                        bottom_trim=bottom_trim)
@@ -86,4 +96,5 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
                 make_1d_spectrum_quality_assurance_graphic(
                     save_path=save_path, order_data=order_data)
             except ValueError:
+                print(f'{wavelengths[i].mean():.1f} not found! Skipping...')
                 continue

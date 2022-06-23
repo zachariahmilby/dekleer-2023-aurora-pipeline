@@ -4,7 +4,7 @@ import astropy.units as u
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.convolution import convolve, Gaussian1DKernel, Gaussian2DKernel
+from astropy.convolution import convolve, Gaussian2DKernel
 
 from khan.analysis.brightness_retrieval import OrderData, Background
 from khan.graphics import data_cmap, color_dict
@@ -128,27 +128,26 @@ def make_background_subtraction_quality_assurance_graphic(
     plt.close()
 
 
-def make_1d_spectrum_quality_assurance_graphic(save_path: str | Path,
-                                               order_data: OrderData):
+def make_1d_spectrum_quality_assurance_graphic(
+        save_path: str | Path, order_data: OrderData):
     """
     Save a quality assurance graphic for the 1D line spectrum.
     """
 
     average_wavelength = order_data.aurora_wavelengths.mean()
-    files = sorted(Path(save_path, f'{average_wavelength:.1f}',
-                        'spectra_1D').glob('*.txt'))
+    files = [path
+             for path in sorted(Path(save_path, f'{average_wavelength:.1f}',
+                                     'spectra_1D').glob('*.txt'))
+             if '_fit' not in str(path)]
     for file in files:
-        _, shifted_wavelength, spectrum = np.genfromtxt(file, unpack=True)
+        _, shifted_wavelength, spectrum, fitted_spectrum, _ = \
+            np.genfromtxt(file, unpack=True, skip_header=True)
         fig, axis = plt.subplots(1, 1, figsize=(9, 2),
                                  constrained_layout=True)
-        smoothed_data = convolve(spectrum, Gaussian1DKernel(stddev=1))
         axis.plot(shifted_wavelength, spectrum, color=color_dict['grey'],
                   linewidth=0.5, label='Not Smoothed')
-        axis.plot(shifted_wavelength, smoothed_data, color='k',
-                  label=r'Smoothed ($\sigma = 1\,\mathrm{bin}$)')
-        [axis.axvline(wavelength, color=color_dict['red'], linestyle='--',
-                      linewidth=0.5)
-         for wavelength in order_data.aurora_wavelengths.value]
+        axis.plot(shifted_wavelength, fitted_spectrum,
+                  color=color_dict['red'], label='Best-Fit Gaussian')
         axis.legend(loc='upper left', frameon=False)
         axis.set_xlabel('Wavelength [nm]')
         axis.set_xlim(order_data.shifted_wavelength_edges[0].value,

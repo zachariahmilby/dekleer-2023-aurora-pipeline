@@ -209,15 +209,42 @@ def aurora_line_wavelengths(extended: bool = False) -> [u.Quantity]:
         [636.3776] * u.nm,  # neutral O
         [656.2852] * u.nm,  # neutral H
         [777.1944, 777.4166, 777.5388] * u.nm,  # neutral O
-        [844.625, 844.636, 844.676] * u.nm,  # neutral O
+        [844.6247, 844.6359, 844.6758] * u.nm,  # neutral O
         ]
     if extended:
         wavelengths.append([588.9950, 589.5924] * u.nm)  # neutral Na
         wavelengths.append([772.5046] * u.nm)  # neutral S
         wavelengths.append([766.4899] * u.nm)  # neutral K
         wavelengths.append([872.7126] * u.nm)  # neutral C
-        wavelengths.append([837.594] * u.nm)  # neutral Cl
+        wavelengths.append([837.5943] * u.nm)  # neutral Cl
     return wavelengths
+
+
+def emission_line_strengths(extended: bool = False) -> [[float]]:
+    """
+    Approximate line strengths from NIST. Mostly useful for the closely-spaced
+    triplet and doublet lines.
+    """
+    ratios = [
+        [1],  # neutral O
+        [1],  # neutral O
+        [1],  # neutral O
+        [1],  # neutral H
+        [1, 27/29, 25/29],  # neutral O
+        [1, 100/81, 187/162],  # neutral O
+    ]
+    if extended:
+        ratios.append([1, 1/2])  # neutral Na
+        ratios.append([1])  # neutral S
+        ratios.append([1])  # neutral K
+        ratios.append([1])  # neutral C
+        ratios.append([1])  # neutral Cl
+    return ratios
+
+
+if __name__ == "__main__":
+    line_strengths = emission_line_strengths()
+    print(line_strengths[0])
 
 
 def jovian_naif_codes() -> dict:
@@ -296,8 +323,11 @@ def format_uncertainty(quantity: int | float,
         unc = float(f'{uncertainty:#.0e}')
         one_more = 0
         order = int(f'{uncertainty:#.0e}'.split('e')[1])
-    mag_diff = int(np.floor(np.log10(abs(quantity)))
-                   - np.floor(np.log10(unc)))
+    try:
+        mag_diff = int(np.floor(np.log10(abs(quantity)))
+                       - np.floor(np.log10(unc)))
+    except (OverflowError, ValueError):
+        mag_diff = np.floor(np.log10(unc))
     if mag_diff < 0:
         fmt = one_more
     else:
@@ -306,4 +336,7 @@ def format_uncertainty(quantity: int | float,
     if (np.sign(order) == -1) or ((order == 0) & (one_more == 1)):
         return float(val), float(unc)
     else:
-        return int(float(val)), int(float(unc))
+        if int(float(unc)) == 0:
+            return np.nan, np.nan
+        else:
+            return int(float(val)), int(float(unc))
