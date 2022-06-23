@@ -280,6 +280,11 @@ def format_uncertainty(quantity: int | float,
     Traceback (most recent call last):
      ...
     ValueError: Uncertainty must be a positive number.
+
+    If the uncertainty is larger than the value, the precision is still set by
+    the uncertainty.
+    >>> format_uncertainty(0.023, 4.322221)
+    (0, 4)
     """
     if np.sign(uncertainty) == -1.0:
         raise ValueError('Uncertainty must be a positive number.')
@@ -291,9 +296,14 @@ def format_uncertainty(quantity: int | float,
         unc = float(f'{uncertainty:#.0e}')
         one_more = 0
         order = int(f'{uncertainty:#.0e}'.split('e')[1])
-    mag_diff = int(np.floor(np.log10(abs(quantity))) - np.floor(np.log10(unc)))
-    val = f'{quantity:.{mag_diff + one_more}e}'
-    if (np.sign(order) == -1) or ((order == 0) & one_more == 1):
+    mag_diff = int(np.floor(np.log10(abs(quantity)))
+                   - np.floor(np.log10(unc)))
+    if mag_diff < 0:
+        fmt = one_more
+    else:
+        fmt = mag_diff + one_more
+    val = f'{quantity:.{fmt}e}'
+    if (np.sign(order) == -1) or ((order == 0) & (one_more == 1)):
         return float(val), float(unc)
     else:
         return int(float(val)), int(float(unc))
