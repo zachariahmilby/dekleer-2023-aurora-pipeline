@@ -596,12 +596,12 @@ class AuroraBrightness:
         for i, prefix in enumerate(prefixes):
             if i != 0:
                 params.add(f'{prefix}amplitude', value=np.nanmax(spectrum),
-                           min=0, max=np.inf, vary=False,
+                           min=-np.inf, max=np.inf, vary=False,
                            expr=f'gaussian1_amplitude '
                                 f'* {self._order_data.line_strengths[i]}')
             else:
                 params.add(f'{prefix}amplitude', value=np.nanmax(spectrum),
-                           min=0, max=np.inf)
+                           min=-np.inf, max=np.inf)
             if i == 0:
                 params.add(f'{prefix}center', value=center_indices[i],
                            min=center_indices[i]-5,
@@ -642,12 +642,29 @@ class AuroraBrightness:
                            f'{best_fit[i]} '
                            f'{fit_uncertainty[i]}\n')
 
-        fit_savepath = Path(self._save_path, f'{average_wavelength:.1f}',
-                            'spectra_1D', filename.replace('.txt', '_fit.txt'))
-        if not fit_savepath.parent.exists():
-            fit_savepath.parent.mkdir(parents=True)
-        with open(fit_savepath, 'w') as file:
+        fit_results_savepath = Path(self._save_path,
+                                    f'{average_wavelength:.1f}',
+                                    'spectra_1D',
+                                    filename.replace('.txt',
+                                                     '_fit_report.txt'))
+        if not fit_results_savepath.parent.exists():
+            fit_results_savepath.parent.mkdir(parents=True)
+        with open(fit_results_savepath, 'w') as file:
             file.write(fit_result.fit_report())
+
+        fit_params_savepath = Path(self._save_path,
+                                   f'{average_wavelength:.1f}',
+                                   'spectra_1D',
+                                   filename.replace('.txt', '_fit_params.txt'))
+        if not fit_params_savepath.parent.exists():
+            fit_params_savepath.parent.mkdir(parents=True)
+        with open(fit_params_savepath, 'w') as file:
+            file.write(f'parameter initial best_fit_value uncertainty\n')
+            for param in fit_result.params.keys():
+                file.write(f'{param} '
+                           f'{fit_result.init_params[param].value} '
+                           f'{fit_result.params[param].value} '
+                           f'{fit_result.params[param].stderr}\n')
 
     def _make_line_spectra(self) -> (list[np.ndarray], np.ndarray,
                                      list[lmfit.model.ModelResult],
@@ -696,7 +713,7 @@ class AuroraBrightness:
             indices.extend(list(np.arange(ind0, ind1+1, 1)))
         return np.unique(indices)
 
-    def _get_measured_brightnesses(self) -> ([u.Quantity], u.Quantity):
+    def _get_measured_brightnesses(self) -> (list[u.Quantity], u.Quantity):
         """
         Integrate measured line spectrum.
         """
@@ -715,7 +732,7 @@ class AuroraBrightness:
              - self._average_fit_result.params['constant_c']) * dwavelength)
         return brightnesses * u.R, average_brightness * u.R
 
-    def _get_measured_uncertainties(self) -> ([u.Quantity], u.Quantity):
+    def _get_measured_uncertainties(self) -> (list[u.Quantity], u.Quantity):
         """
         Integrate best-fit model spectrum uncertainty for 0.1 nm.
         """
@@ -734,7 +751,7 @@ class AuroraBrightness:
         average_uncertainty = np.sqrt(np.sum((std * dwavelength)**2))
         return uncertainties * u.R, average_uncertainty * u.R
 
-    def _get_fitted_brightnesses(self) -> ([u.Quantity], u.Quantity):
+    def _get_fitted_brightnesses(self) -> (list[u.Quantity], u.Quantity):
         """
         Integrate best-fit model spectrum.
         """
@@ -753,7 +770,7 @@ class AuroraBrightness:
             x=self._order_data.shifted_wavelength_centers[ind].value)
         return brightnesses * u.R, average_brightness * u.R
 
-    def _get_fitted_uncertainties(self) -> ([u.Quantity], u.Quantity):
+    def _get_fitted_uncertainties(self) -> (list[u.Quantity], u.Quantity):
         """
         Integrate best-fit model spectrum uncertainty.
         """
@@ -824,5 +841,5 @@ class AuroraBrightness:
                        f'{average_background_unc.value} '
                        f'{average_fitted_brightness.value} '
                        f'{average_fitted_uncertainty.value} '
-                       f'{int(bg_avg)} '
+                       f'{np.round(bg_avg, 0)} '
                        f'---\n')
