@@ -204,7 +204,7 @@ def aurora_line_wavelengths(extended: bool = False) -> [u.Quantity]:
     A list of aurora line wavelengths as Astropy quantities.
     """
     wavelengths = [
-        [557.7330] * u.nm,  # neutral O
+        [557.7339] * u.nm,  # neutral O
         [630.0304] * u.nm,  # neutral O
         [636.3776] * u.nm,  # neutral O
         [656.2852] * u.nm,  # neutral H
