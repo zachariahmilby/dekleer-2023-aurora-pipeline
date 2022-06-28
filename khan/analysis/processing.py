@@ -18,7 +18,6 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
                             seeing: float = 1,
                             exclude: dict = None,
                             y_offset: int = 0,
-                            linear_component: bool = False,
                             top_trim: int = 2,
                             bottom_trim: int = 2,
                             additional_wavelengths: bool = False):
@@ -50,10 +49,6 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
         Number of bins to offset the center of the aperture from the center
         of the order. Useful if the spatial position of the target isn't in
         the exact center.
-    linear_component : bool
-        Whether or not to add a linear component to the background fit. If the
-        rectified order still has some shear, this component could help account
-        for it.
     top_trim: int
         How many rows to remove from the top edge of the order to eliminate
         artifacts from rectification. Default is 2.
@@ -76,16 +71,15 @@ def get_aurora_brightnesses(reduced_data_path: str | Path,
             extended=additional_wavelengths)
         for i in range(len(wavelengths)):
             try:
-                order_data = OrderData(reduced_data_path=reduced_data_path,
-                                       wavelengths=wavelengths[i],
-                                       emission_line_strengths=
-                                       line_strengths[i],
-                                       seeing=seeing * u.arcsec,
-                                       exclude=exclude, top_trim=top_trim,
-                                       bottom_trim=bottom_trim)
+                order_data = OrderData(
+                    reduced_data_path=reduced_data_path,
+                    wavelengths=wavelengths[i],
+                    emission_line_strengths=line_strengths[i],
+                    seeing=seeing * u.arcsec,
+                    exclude=exclude, top_trim=top_trim,
+                    bottom_trim=bottom_trim)
                 background = Background(order_data=order_data,
-                                        y_offset=y_offset,
-                                        linear_component=linear_component)
+                                        y_offset=y_offset)
                 aurora_brightness = AuroraBrightness(order_data=order_data,
                                                      background=background,
                                                      save_path=save_path)
