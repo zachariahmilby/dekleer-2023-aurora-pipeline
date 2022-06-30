@@ -339,15 +339,17 @@ class Background:
         """
         n_obs, _, _ = self._order_data.target_images.shape
         profiles = []
+        ind = np.unique(np.where(~np.isnan(self._target_mask))[1])
         for obs in range(n_obs):
             masked_image = (self._order_data.target_images[obs]
                             * self._target_mask)
-            characteristic_profile = np.nanmean(masked_image, axis=1)
+            characteristic_profile = np.nanmedian(masked_image[:, ind], axis=1)
             profiles.append(characteristic_profile
                             / np.nanmax(characteristic_profile))
         average_masked_image = \
             self._order_data.average_target_image * self._target_mask
-        characteristic_profile = np.nanmean(average_masked_image, axis=1)
+        characteristic_profile = np.nanmedian(average_masked_image[:, ind],
+                                              axis=1)
         characteristic_profile /= np.nanmax(characteristic_profile)
         return np.array(profiles), characteristic_profile
 
@@ -367,62 +369,24 @@ class Background:
             background = np.zeros(masked_image.shape)
             profile = background_profiles[obs]
             constant = np.ones(profile.shape[0])
-
-            # compare linear and constant fits and choose the one with the
-            # lowest BIC
-            linear = np.arange(profile.shape[0])
-            linear_fit_profile = np.array([constant, linear, profile]).T
-            constant_fit_profile = np.array([constant, profile]).T
+            fit_profile = np.array([constant, profile]).T
             for col in range(nx):
-                if len(np.where(np.isnan(self._target_mask[:, col]))[0]) > 0:
-                    mask_col = True
-                else:
-                    mask_col = False
-                linear_result = sm.OLS(masked_image[:, col].value,
-                                       linear_fit_profile,
-                                       missing='drop').fit()
-                constant_result = sm.OLS(masked_image[:, col].value,
-                                         constant_fit_profile,
-                                         missing='drop').fit()
-                if (linear_result.bic < constant_result.bic) and not mask_col:
-                    best_fit_constant = linear_result.params[0]
-                    best_fit_profile = (linear_result.params[1] * linear
-                                        + linear_result.params[2] * profile)
-                else:
-                    best_fit_constant = constant_result.params[0]
-                    best_fit_profile = (constant_result.params[1] * profile)
+                result = sm.OLS(masked_image[:, col].value,
+                                fit_profile, missing='drop').fit()
+                best_fit_constant = result.params[0]
+                best_fit_profile = result.params[1] * profile
                 background[:, col] = best_fit_constant + best_fit_profile
             backgrounds.append(background)
         average_masked_image = \
             self._order_data.average_target_image * self._target_mask
         average_background = np.zeros(average_masked_image.shape)
         constant = np.ones(average_background_profile.shape[0])
-
-        linear = np.arange(average_background_profile.shape[0])
-        linear_fit_profile = np.array([constant, linear,
-                                       average_background_profile]).T
-        constant_fit_profile = np.array([constant,
-                                         average_background_profile]).T
+        fit_profile = np.array([constant, average_background_profile]).T
         for col in range(nx):
-            if len(np.where(np.isnan(self._target_mask[:, col]))[0]) > 0:
-                mask_col = True
-            else:
-                mask_col = False
-            linear_result = sm.OLS(average_masked_image[:, col].value,
-                                   linear_fit_profile,
-                                   missing='drop').fit()
-            constant_result = sm.OLS(average_masked_image[:, col].value,
-                                     constant_fit_profile,
-                                     missing='drop').fit()
-            if (linear_result.bic < constant_result.bic) and not mask_col:
-                best_fit_constant = linear_result.params[0]
-                best_fit_profile = (linear_result.params[1] * linear
-                                    + linear_result.params[2]
-                                    * average_background_profile)
-            else:
-                best_fit_constant = constant_result.params[0]
-                best_fit_profile = (constant_result.params[1]
-                                    * average_background_profile)
+            result = sm.OLS(average_masked_image[:, col].value,
+                            fit_profile, missing='drop').fit()
+            best_fit_constant = result.params[0]
+            best_fit_profile = result.params[1] * average_background_profile
             average_background[:, col] = best_fit_constant + best_fit_profile
 
         return (np.array(backgrounds) * u.electron / u.s,
@@ -767,7 +731,7 @@ class AuroraBrightness:
         average_uncertainty = np.sqrt(np.sum((std * dwavelength)**2))
         return uncertainties * u.R, average_uncertainty * u.R
 
-    def _get_fitted_brightnesses(self) -> (list[u.Quantity], u.Quantity):
+    def _get_fitted_brightnesses(self) -> (u.Quantity, u.Quantity):
         """
         Integrate best-fit model spectrum.
         """
@@ -784,9 +748,9 @@ class AuroraBrightness:
             self._average_fit_result.best_fit[ind]
             - self._average_fit_result.params['constant_c'],
             x=self._order_data.shifted_wavelength_centers[ind].value)
-        return brightnesses * u.R, average_brightness * u.R
+        return np.array(brightnesses) * u.R, average_brightness * u.R
 
-    def _get_fitted_uncertainties(self) -> (list[u.Quantity], u.Quantity):
+    def _get_fitted_uncertainties(self) -> (u.Quantity, u.Quantity):
         """
         Integrate best-fit model spectrum uncertainty.
         """
@@ -801,7 +765,7 @@ class AuroraBrightness:
         average_uncertainty = np.trapz(
             self._average_fit_result.eval_uncertainty()[ind],
             x=self._order_data.shifted_wavelength_centers[ind].value)
-        return uncertainties * u.R, average_uncertainty * u.R
+        return np.array(uncertainties) * u.R, average_uncertainty * u.R
 
     def save_results(self):
         """
