@@ -9,8 +9,12 @@ from astropy.io import fits
 from lmfit.models import ConstantModel, GaussianModel
 from lmfit import Parameters
 
+from astroquery.jplhorizons import Horizons
+from astropy.time import Time
+from astropy.coordinates import SkyCoord
+
 from khan.common import doppler_shift_wavelengths, \
-    get_solar_spectral_radiance, get_meridian_reflectivity
+    get_solar_spectral_radiance, get_meridian_reflectivity, jovian_naif_codes
 
 
 class OrderData:
@@ -767,6 +771,35 @@ class AuroraBrightness:
             x=self._order_data.shifted_wavelength_centers[ind].value)
         return np.array(uncertainties) * u.R, average_uncertainty * u.R
 
+    @staticmethod
+    def _get_ephemeris(date, target):
+        epoch = Time(date, format='isot', scale='utc').jd
+        eph = Horizons(id=target, location='568', epochs=epoch).ephemerides()
+        return eph
+
+    def _calculate_angular_separation(self) -> u.Quantity:
+        """
+        Calculate the angular separation between Jupiter and the target
+        satellite in Jupiter radii.
+        """
+        dates = self._order_data.observation_dates
+        codes = jovian_naif_codes()
+        separations = []
+        for date in dates:
+            jupiter_ephemeris = self._get_ephemeris(date, '599')
+            target_ephemeris = self._get_ephemeris(
+                date, codes[self._order_data.target_name])
+            jupiter_position = SkyCoord(ra=jupiter_ephemeris['RA'],
+                                        dec=jupiter_ephemeris['DEC'])
+            target_position = SkyCoord(ra=target_ephemeris['RA'],
+                                       dec=target_ephemeris['DEC'])
+            separation = target_position.separation(
+                jupiter_position)[0].to(u.arcsec).value
+            radius = jupiter_ephemeris['ang_width'][0] / 2
+            separation -= radius
+            separations.append(separation/radius)
+        return separations
+
     def save_results(self):
         """
         Save the results to a text file.
@@ -793,6 +826,7 @@ class AuroraBrightness:
         fitted_uncertainties, average_fitted_uncertainty = \
             self._get_fitted_uncertainties()
         bg_electron_flux = self._background.background_electron_flux
+        angular_separations = self._calculate_angular_separation()
         included_in_average = self._order_data.included_in_average
 
         filename = 'results.txt'
@@ -802,7 +836,8 @@ class AuroraBrightness:
 
         header = 'date measured_brightness_[R] measured_uncertainty_[R] ' \
                  'fitted_brightness_[R] fitted_uncertainty_[R] ' \
-                 'bg_electron_flux_[e/s/arcsec2] included_in_avg'
+                 'bg_electron_flux_[e/s/arcsec2] limb_separation_[r/R_J] ' \
+                 'included_in_avg'
         with open(savepath, 'w') as file:
             file.write(header + '\n')
             for obs in range(n_obs):
@@ -812,6 +847,7 @@ class AuroraBrightness:
                            f'{fitted_brightnesses[obs].value} ' \
                            f'{fitted_uncertainties[obs].value} ' \
                            f'{int(bg_electron_flux[obs].value)} ' \
+                           f'{angular_separations[obs]:.2f} ' \
                            f'{included_in_average[obs]}\n'
                 file.write(data_str)
             bg_avg = (bg_electron_flux[
@@ -822,4 +858,5 @@ class AuroraBrightness:
                        f'{average_fitted_brightness.value} '
                        f'{average_fitted_uncertainty.value} '
                        f'{np.round(bg_avg, 0)} '
+                       f'--- '
                        f'---\n')
