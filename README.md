@@ -300,7 +300,7 @@ tables for the target and guide satellites.
 The function `get_aurora_brightnesses` takes the reduced data, flux-calibrates
 the science images and extracts the surface brightness in rayleigh at the 
 following wavelengths (if the detector setup captured them):
-1. 557.7330 nm O(¹S) to O(¹D)
+1. 557.7339 nm O(¹S) to O(¹D)
 2. 630.0304 nm O(¹D) to O(³P₀)
 3. 636.3776 nm O(¹D) to O(³P₂)
 4. 656.2852 nm Balmer-alpha (Hα)
@@ -309,9 +309,9 @@ following wavelengths (if the detector setup captured them):
    2. 777.4166 nm O(⁵P₂) to O(⁵S₂)
    3. 777.5388 nm O(⁵P₁) to O(⁵S₂)
 6. The 844.6 nm OI triplet (done as one line since they overlap)
-   1. 844.625 nm O(³P₀) to O(³S₁)
-   2. 844.636 nm O(³P₂) to O(³S₁)
-   3. 844.676 nm O(³P₁) to O(³S₁)
+   1. 844.6247 nm O(³P₀) to O(³S₁)
+   2. 844.6359 nm O(³P₂) to O(³S₁)
+   3. 844.6758 nm O(³P₁) to O(³S₁)
 
 The brightness retrieval is slightly less automated than the reduction 
 pipeline, so you may need to run it a few times and adjust some parameters 
