@@ -121,7 +121,8 @@ class RawFiles(FilesDirectory):
         Return a dictionary containing all of the necessary ancillary
         information and the detector images appropriately rotated and stacked.
         """
-        eph = self._get_ephemerides(hdul[0].header['date'], self._target)
+        date = f"{hdul[0].header['date-obs']}T{hdul[0].header['ut']}"
+        eph = self._get_ephemerides(date, self._target)
         header = hdul['PRIMARY'].header
         try:  # under a different name in the 1998 data
             obstype = header['obstype']
@@ -136,7 +137,7 @@ class RawFiles(FilesDirectory):
         maximum_scale_value = np.percentile(image, 99)
         file_name = Path(hdul.filename()).name
         data = {'Filename': file_name,
-                'Observation Date': hdul[0].header['date'].replace('T', ' '),
+                'Observation Date': date.replace('T', ' '),
                 'Object (Target)': header['object'],
                 'Exposure Time [s]': np.round(header['exptime'], 2),
                 'Target Visibility Code': eph['sat_vis'][0],
@@ -200,8 +201,9 @@ class SelectedFiles(FilesDirectory):
         Return a dictionary containing all of the necessary ancillary
         information and the detector images appropriately rotated and stacked.
         """
-        eph = self._get_ephemerides(hdul[0].header['date'], self._target)
-        jupiter_eph = self._get_ephemerides(hdul[0].header['date'], 'Jupiter')
+        date = f"{hdul[0].header['date-obs']}T{hdul[0].header['ut']}"
+        eph = self._get_ephemerides(date, self._target)
+        jupiter_eph = self._get_ephemerides(date, 'Jupiter')
         header = hdul['PRIMARY'].header
         try:  # under a different name in the 1998 data
             obstype = header['obstype']
@@ -215,7 +217,6 @@ class SelectedFiles(FilesDirectory):
         minimum_scale_value = np.percentile(image, 1)
         maximum_scale_value = np.percentile(image, 99)
         file_name = Path(hdul.filename()).name
-        date = hdul[0].header['date']
         data = {'Filename': file_name,
                 'File Type': filetype,
                 'Julian Date': Time(date, format='isot', scale='utc').jd,
