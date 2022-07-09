@@ -1,4 +1,4 @@
-# KHAN: Keck HIRES Aurora pipeliNe
+# `khan`: Keck HIRES Aurora pipeliNe
 
 > "You are in a position to demand nothing. I, on the other hand, am in a 
 > position to grant nothing."
