@@ -66,7 +66,67 @@ you're more advanced I'm sure you can figure it out from here.
 
 You're now ready to use the `khan` package! Khaaan!
 
-## Getting Started
+## Predicting Eclipses
+To find when eclipses occur (or to find out information about an eclipse you've 
+already observed), import the `EclipsePrediction` class:
+
+```>>> from khan import EclipsePrediction```
+
+To predict eclipses, set a starting and ending date (`'YYYY-MM-DD HH:MM'` 
+format, time optional) and a target satellite (`'Io'`, `'Europa'`, `'Ganymede'` 
+or `'Callisto'`). You might get an error from Horizons saying your target name
+is too ambiguous:
+`ValueError: Ambiguous target name; provide unique id`, followed by a list 
+of potential alternatives. I found this happened with Io and Europa. For these 
+satellites, you can just enter the object ID#: 501 for Io and 502 for Europa. 
+Depending on the timespan you've specified, it may take a minute or two to run. 
+For example, if you want to predict Ganymede eclipses from June 1 to September 1, 2021:
+
+```
+>>> eclipse_prediction = EclipsePrediction(starting_datetime='2021-06-01', ending_datetime='2021-09-01', target='Ganymede')
+
+4 Ganymede eclipse(s) identified between 2021-06-01 and 2021-09-01.
+
+Starting Time (Keck/UTC) Ending Time (Keck/UTC) Starting Time (California) Ending Time (California) Duration Airmass Range  Relative Velocity
+2021-Jun-08 12:48        2021-Jun-08 15:17      2021-Jun-08 05:48 PDT      2021-Jun-08 08:17 PDT    2:29     1.173 to 1.581 -24.0 km/s       
+2021-Jul-14 09:40        2021-Jul-14 12:06      2021-Jul-14 02:40 PDT      2021-Jul-14 05:06 PDT    2:26     1.222 to 1.994 -16.2 km/s       
+2021-Jul-21 12:47        2021-Jul-21 15:29      2021-Jul-21 05:47 PDT      2021-Jul-21 08:29 PDT    2:42     1.181 to 1.670 -12.8 km/s       
+2021-Aug-26 11:45        2021-Aug-26 12:15      2021-Aug-26 04:45 PDT      2021-Aug-26 05:15 PDT    0:30     1.359 to 1.481   2.6 km/s       
+```
+
+If you choose a time period without any eclipses (like January 1 to February 
+1, 2021), you'll get an error message:
+
+```
+>>> eclipse_prediction = EclipsePrediction(starting_datetime='2021-01-01', ending_datetime='2021-02-01', target='Ganymede')
+Sorry, no eclipses found!
+```
+
+`EclipsePrediction` has the method `save_summary_graphics()` which will save a 
+small summary graphic to your computer. By default, they save in 
+your current working directory. However, you can also specify the 
+directory where you want the graphics saved by passing a string of the path or
+a `pathlib.Path` object:
+
+```
+>>> eclipse_prediction.save_summary_graphics('/path/to/directory')
+```
+
+Here's an example of what one of those graphics looks like:
+
+![](khan/anc/sample_graphic.png)
+
+It includes the starting and ending times in local California time (so you know 
+how awful of a night you'll have) and UTC, the closest sunrise and sunset times 
+to the eclipse, the duration of the eclipse in HH:MM format, the rotation angle 
+of Jupiter's north pole and Ganymede's relative velocity. The lower left 
+graphic shows the position of the target satellite during the eclipse in 
+altitude/azimuth coordinates with an overlay of the Keck I pointing limits. The 
+upper right plot shows the target satellite airmass over the course of the 
+eclipse. The lower right plot shows the angular separation between the target 
+satellite, Jupiter and the other Galilean satellites.
+
+## Running the Pipeline
 There are three steps to running this pipeline.
 1. Sort your data files manually so it knows where to find file type. 
    Unfortunately FITS headers are extremely unreliable for recording what the 
@@ -235,7 +295,7 @@ REDUX04 = 'rectified'          / reduction applied to primary extension
 REDUX05 = 'airmass_ext_corrected' / reduction applied to primary extension
 ```
 
-Similar (but much less) informatino exists in the headers for the other 
+Similar (but much less) information exists in the headers for the other 
 extensions. For instance, the header for `BIN_EDGE_WAVELENGTHS` looks like 
 this:
 
@@ -295,20 +355,21 @@ includes the same wavelength and echelle order information as the flux
 calibration data file, and has individual observation-specific information 
 tables for the target and guide satellites.
 
-### Retrieving Aurora Brightnesses
+## Retrieving Aurora Brightnesses
 
 The function `get_aurora_brightnesses` takes the reduced data, flux-calibrates
 the science images and extracts the surface brightness in rayleigh at the 
 following wavelengths (if the detector setup captured them):
 1. 557.7339 nm O(¹S) to O(¹D)
-2. 630.0304 nm O(¹D) to O(³P₀)
-3. 636.3776 nm O(¹D) to O(³P₂)
-4. 656.2852 nm Balmer-alpha (Hα)
-5. The 777.4 nm OI triplet (done as separate lines due to their wide spacing):
+2. The "red" doublet (done as separate lines):
+   1. 630.0304 nm O(¹D) to O(³P₀)
+   2. 636.3776 nm O(¹D) to O(³P₂)
+3. 656.2852 nm Balmer-alpha (Hα)
+4. The 777.4 nm OI triplet:
    1. 777.1944 nm O(⁵P₃) to O(⁵S₂)
    2. 777.4166 nm O(⁵P₂) to O(⁵S₂)
    3. 777.5388 nm O(⁵P₁) to O(⁵S₂)
-6. The 844.6 nm OI triplet (done as one line since they overlap)
+5. The 844.6 nm OI triplet:
    1. 844.6247 nm O(³P₀) to O(³S₁)
    2. 844.6359 nm O(³P₂) to O(³S₁)
    3. 844.6758 nm O(³P₁) to O(³S₁)
@@ -340,75 +401,139 @@ used in `run_pipeline`), and the new `save_path` is the location where you want
 the retrieval outputs saved. 
 
 The arguments you may need to adjust are the following:
-1. `top_trim` is how many rows to eliminate from the top of each order. The 
-   rectification process will produce some weird, sawtooth-like effects and 
-   they can mess up the fitting of the background and the estimation of the
-   noise. A value of `top_trim=2` seems to be typical, but is is probably
-   dependent on the binning.
-2. `bottom_trim` is the same but for the bottom of each order. If the edge
-   detection wasn't quite symmetric around the center of each order, the top
-   and bottom trim values might not be the same. The default is `*_trim=0` for 
-   both 1trim values. An initial run without any trimming might be useful to 
-   get an idea of how many rows you should eliminate.
-3. `seeing` accounts for the spread of the signal beyond the actual physical 
+1. `seeing` accounts for the spread of the signal beyond the actual physical 
    size of the target satellite (in this case, the angular size). This argument
    lets you add to the radius of the target satellite to increase the size of 
    the aperture with which you capture the brightness. The aperture has a size
    (𝘙 + seeing)² where 𝘙 is the apparent angular radius of the target
    satellite. I correct the final reported brightness by scaling it by the 
    ratio of the aperture size to the target size ((𝘙 + seeing)/𝘙)².
-4. `background_degree` lets you choose the degree of the background polynomial
-   fit. The default is `background_degree=1`, which I think is good in most 
-   cases. Higher-degree polynomials can characterize noise which has more 
-   spatial structure than a linear trend from one end of the slit to another,
-   but you risk over-fitting and subtracting real brightness from the target
-   satellite. I think in most cases it's probably better to keep it to a first-
-   degree polynomial and more carefully estimate additional background in your
-   brightness values.
+2. `exclude` lets you exclude selected observations from averaging for a 
+   particular wavelength. For instance, if you wanted to exclude the first
+   three images from averaging for 777.4 nm and 844.6 nm, you would pass this
+   dictionary:
 
-You can evaluate the results of a retrieval by looking at the two output types.
-The algorithm creates a `.txt` file which contains the observation start time,
-the retrieved brightness in rayleighs, the estimated uncertainty in rayleighs 
-and the average background at the particular wavelength in counts/second. 
+   ```{'777.4 nm': [0, 1, 2], '844.6 nm': [0, 1, 2]}```
+
+   For the pipeline as it currently is, you have to define these exclusions for
+   every wavelength if you want to exclude the same frame from all of the 
+   averages. Here's a full dictionary template to use:
+   
+   ```
+   {
+    '557.7 nm': [],
+    '630.0 nm': [],
+    '636.4 nm': [],
+    '656.3 nm': [],
+    '777.4 nm': [],
+    '844.6 nm': []
+   }
+   ```
+3. `y_offset` lets you adjust the vertical offset in case the satellite wasn't
+   well centered in the slit. Note that this offset takes place after the 
+   trimming below, so if you change the trim the position of the offset will 
+   also change.
+4. `top_trim` is how many rows to eliminate from the top of each order. The 
+   rectification process will produce some weird, sawtooth-like effects and 
+   they can mess up the fitting of the background and the estimation of the
+   noise. A value of `top_trim=2` seems to be typical (and is the default), but 
+   is is probably dependent on the binning.
+5. `bottom_trim` is the same but for the bottom of each order. If the edge
+   detection wasn't quite symmetric around the center of each order, the top
+   and bottom trim values might not be the same. The default is `bottom_trim=2` 
+   for both trim values. An initial run without any trimming might be useful to 
+   get an idea of how many rows you should eliminate.
+6. `additional_wavelengths` is technically not supported yet, but I've added
+   a few additional aurora wavelengths to consider in the future. These include
+   the sodium doublet at 588.9950 and 589.5924 nm, sulfur at 772.5046 nm, 
+   potassium at 766.4899 nm, carbon at 872.7126 nm and chlorine at 837.5943 nm.  
+
+You can evaluate the results of a retrieval by looking at several output types.
+It produces output with the following directory structure (I've only filled out 
+the example for 630.0 nm, but it applies to all the wavelengths):
+
+```
+557.7 nm
+630.0 nm
+|
+└───results.txt
+│   spectra_1d
+│   └───average_fit_params.txt
+│   │   average_fit_report.txt
+│   │   average.pdf
+│   │   average.txt
+│   │   ...
+│   spectra_2d
+│   └───average.pdf
+│   │   average.txt
+│   │   ...
+636.4 nm
+656.3 nm
+777.4 nm
+844.6 nm
+```
+
+In the `spectra_2d` directory:
+- `average.pdf` is an image which shows the average raw image with the seeing 
+   aperture outlined, the fitted background, the background-subtracted image, 
+   and the background-subtracted image smoothed with a Gaussian kernel.
+- `average.txt` is the background-subtracted image saved to a text file in case
+   you want to make a paper graphic or something. You can get the wavelengths 
+   for each of the horizontal pixels from either the 
+   `science_observations.fits.gz` file or the `average.txt` file from the
+   `spectra_1d` directory (see below).
+
+In the `spectra_1d` directory:
+- `average_fit_params.txt` gives the initial and best-fit values for the
+Gaussian function parameters. This is particularly useful if you want to see if
+your wavelength calibration frames were off (ours usually were bu at least a
+few spectral pixels.)
+- `avereage_fit_report.txt` is a human-readable version of the fit results.
+- `average.pdf` is an output of the 2D spectrum summed over the rows containing
+   the seeing aperture. It also includes the best-fit Gaussian.
+- `average.txt` contains the data in `average.pdf` in case you want to make a
+   similar plot for a paper. It includes rest and doppler-shifted wavelengths,
+   the observed spectrum, the fitted spectrum and the fitted uncertainty.
+
+Finally, the summary `results.txt` file includes the observed brightnesses, 
+estimated uncertainty from the observed background, Gaussian-fitted 
+brightnesses and their uncertainties, the background electron flux (for 
+background comparison between observations or observing nights), the separation 
+between Jupiter's limb and the target in units of Jupiter angular radii, and 
+whether a particular image was included in the average (see the `exclude` 
+option above). It also reports all of these values for the average image.
+
 Here's an example of one of those files for the 630.0 nm brightnesses from 
 June 8, 2021:
 
 ```
-date brightness_R uncertainty_R avg_background_counts_per_s
-2021-06-08T12:58:16 107.20 11.75 2.14
-2021-06-08T13:05:29 95.29 11.12 2.17
-2021-06-08T13:22:12 107.00 11.73 2.33
-2021-06-08T13:29:41 111.80 11.93 2.31
-2021-06-08T13:36:46 114.59 12.01 2.29
-2021-06-08T13:44:33 124.27 12.38 2.31
-2021-06-08T13:51:41 127.64 12.52 2.30
-2021-06-08T13:58:52 99.99 11.35 2.31
-2021-06-08T14:08:09 96.78 11.32 2.39
-2021-06-08T14:15:28 105.62 11.67 2.53
-2021-06-08T14:22:45 118.04 12.25 2.68
-2021-06-08T14:29:56 139.95 13.11 2.81
-2021-06-08T14:37:35 152.45 13.61 2.95
-2021-06-08T14:44:47 134.71 12.94 3.08
-2021-06-08T14:52:33 107.73 11.89 3.32
-2021-06-08T15:01:18 91.08 11.30 3.95
-2021-06-08T15:08:29 90.68 11.64 6.05
+date measured_brightness_[R] measured_uncertainty_[R] fitted_brightness_[R] fitted_uncertainty_[R] bg_electron_flux_[e/s/arcsec2] limb_separation_[r/R_J] included_in_avg
+2021-06-08T12:58:16 114.38788510586365 2.176997831892849 127.12372735841755 3.5396599526937216 33 2.71 True
+2021-06-08T13:05:29 105.78947294585127 2.9706009809498926 121.72294174643538 4.128518842098819 33 2.65 True
+2021-06-08T13:22:12 133.78681762574294 3.4598181142855333 139.53956749991252 3.9854066943303272 36 2.50 True
+2021-06-08T13:29:41 120.6999777862233 3.5702097471184273 134.293459692529 4.259046809243917 36 2.44 True
+2021-06-08T13:36:46 132.05449862611027 3.433403582051226 145.08130497149816 4.2756023006184165 35 2.37 True
+2021-06-08T13:44:33 151.3158700316101 3.60910064579896 161.55707369355244 4.2107964215348535 36 2.30 True
+2021-06-08T13:51:41 160.43660854708202 3.5243080592258216 160.6911693298914 4.059741244945436 35 2.24 True
+2021-06-08T13:58:52 128.82637564226744 3.3266112651812136 135.66693947660414 4.187324893494349 35 2.17 True
+2021-06-08T14:08:09 150.38561425227755 2.7016045317121518 165.54493860386032 4.067890135796443 36 2.09 True
+2021-06-08T14:15:28 127.33538297809552 3.6564938659377533 136.50224934884363 4.338931545519123 39 2.03 True
+2021-06-08T14:22:45 148.07538372474164 3.5726334416447716 152.5760630533286 4.403000930974958 41 1.96 True
+2021-06-08T14:29:56 164.24310438210827 3.835272429799544 178.06205529698107 4.5388203857731195 43 1.90 True
+2021-06-08T14:37:35 171.72785683019103 4.0019301419368505 182.2380841391468 4.686089814108676 45 1.83 True
+2021-06-08T14:44:47 152.05050267806627 4.149820680039169 162.07865196020322 4.691616667803005 47 1.77 True
+2021-06-08T14:52:33 133.69925706139287 3.8521670891260738 137.33620694811236 4.362427624967849 51 1.70 True
+2021-06-08T15:01:18 125.38758111484458 3.9622254243182806 128.5337425718581 4.603832257550263 60 1.62 True
+2021-06-08T15:08:29 100.72844026897099 5.540219516129061 116.74119636153164 6.452548709978012 93 1.55 True
+average 139.58312536656894 1.0286513503451231 147.5525661782082 1.549113497693975 44.0 --- ---
+
 ```
-
-It also creates a directory into which it saves graphics for each of the 
-observations, showing
-1. The initial reduced data image,
-2. The fitted background,
-3. The background-subtracted image, and
-4. The aperture-isolated bins used for the target brightness,
-
-along with a pickle of the final reduced image and the meshgrids you'd need to 
-visualize it.
 
 That's pretty much all there is to it. Each time I retrieve brightnesses, I run
 it a few times until I've figured out the right trim and seeing values, then 
-use the results in the `.txt` file.
+use the results in the `results.txt` file.
 
-### Ancillary Functions
+## Ancillary Functions
 There are a few ancillary functions I've made available, mostly because I 
 wanted an easy way to plot some of the data used in the calibrations. The
 functions available are:

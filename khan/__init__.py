@@ -7,3 +7,4 @@ from khan.common import get_meridian_reflectivity, \
     load_anc_file, format_uncertainty
 from khan.graphics import convert_wavelength_to_rgb
 from khan.pipeline.files import RawFiles, SelectedFiles
+from khan.planner.base import EclipsePrediction
