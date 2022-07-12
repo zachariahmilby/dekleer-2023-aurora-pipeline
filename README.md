@@ -533,6 +533,52 @@ That's pretty much all there is to it. Each time I retrieve brightnesses, I run
 it a few times until I've figured out the right trim and seeing values, then 
 use the results in the `results.txt` file.
 
+## Example
+Here's an example based on a script I wrote to process the June 8, 2021 
+Ganymede eclipse data:
+
+```
+from pathlib import Path
+from khan import reduce_data, RawFiles, SelectedFiles, get_aurora_brightnesses
+
+# set various directories
+date = '2021-06-08'
+parent_directory = Path(f'/path/to/project/directory')
+raw_files_path = Path(parent_directory, 'Data', 'raw', date)
+selected_files_path = Path(parent_directory, 'Data', 'selected', date)
+reduced_data_path = Path(parent_directory, 'Data', 'reduced', date)
+save_path = Path(parent_directory, 'Analysis', date)
+
+# get the raw data files
+raw_files = RawFiles(directory=raw_files_path, target='Ganymede')
+
+# make summary spreadsheet and graphics for the raw data files to help me 
+# select and sort them
+raw_files.process_files()
+
+# get the sorted selected files
+selected_files = SelectedFiles(directory=selected_files_path, target='Ganymede')
+
+# make summary spreadsheet graphics for the selected files
+selected_files.process_files(make_planning_graphic=True)
+
+# reduce the selected data
+reduce_data(science_target_name='Ganymede', guide_satellite_name='Europa',
+            source_data_path=selected_files_path, save_path=reduced_data_path,
+            quality_assurance=True)
+
+# exclude some of the later observations from the 777.4 and 844.6 nm averages
+exclude = {
+    '777.4 nm': [14, 15, 16],
+    '844.6 nm': [12, 13, 14, 15, 16]
+}
+
+# get the aurora brightnesses
+get_aurora_brightnesses(reduced_data_path=reduced_data_path,
+                        save_path=save_path, seeing=1, y_offset=0,
+                        exclude=exclude)
+```
+
 ## Ancillary Functions
 There are a few ancillary functions I've made available, mostly because I 
 wanted an easy way to plot some of the data used in the calibrations. The
