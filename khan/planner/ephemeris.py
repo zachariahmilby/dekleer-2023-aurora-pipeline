@@ -3,7 +3,7 @@ from astroquery.jplhorizons import Horizons
 
 
 def _get_ephemeris(starting_datetime: str, ending_datetime: str, target: str,
-                   step: str = '1m', airmass_lessthan: int | float = 2,
+                   step: str = '1m', airmass_lessthan: int | float | None = 2,
                    skip_daylight: bool = False) -> dict:
     """
     Query the JPL Horizons System and get a dictionary of ephemeris
@@ -12,8 +12,11 @@ def _get_ephemeris(starting_datetime: str, ending_datetime: str, target: str,
     epochs = {'start': starting_datetime, 'stop': ending_datetime,
               'step': step}
     obj = Horizons(id=target, location='568', epochs=epochs)
-    return obj.ephemerides(airmass_lessthan=airmass_lessthan,
-                           skip_daylight=skip_daylight)
+    if airmass_lessthan is None:
+        return obj.ephemerides(skip_daylight=skip_daylight)
+    else:
+        return obj.ephemerides(airmass_lessthan=airmass_lessthan,
+                               skip_daylight=skip_daylight)
 
 
 def _get_eclipse_indices(ephemeris: dict) -> np.ndarray:

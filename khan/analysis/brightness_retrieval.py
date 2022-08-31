@@ -537,7 +537,8 @@ class AuroraBrightness:
                                 * self._get_dwavelength()).to(u.R)
             self._save_background_subtracted_images(
                 calibrated_image.value,
-                self._order_data.filenames[obs].replace('.fits.gz', '.txt'))
+                self._order_data.filenames[obs].replace(
+                    '.fits', '.txt').replace('.gz', ''))
             calibrated_images.append(calibrated_image.value)
         background_subtracted_average_image = \
             (self._order_data.average_target_image
@@ -668,8 +669,8 @@ class AuroraBrightness:
             spectra.append(spectrum)
             fit_result = self._fit_gaussian(spectrum=spectrum)
             fit_results.append(fit_result)
-            filename = self._order_data.filenames[obs].replace('.fits.gz',
-                                                               '.txt')
+            filename = self._order_data.filenames[obs].replace(
+                '.fits', '.txt').replace('.gz', '')
             self._save_line_spectra(
                 self._order_data.rest_wavelength_centers,
                 self._order_data.shifted_wavelength_centers,

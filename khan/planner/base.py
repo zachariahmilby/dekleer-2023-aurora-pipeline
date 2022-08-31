@@ -75,6 +75,57 @@ class _AngularSeparation:
         return self._target2_ephemeris['ang_width'].value/2 * u.arcsec
 
 
+class TelescopePointing:
+
+    def __init__(self, eclipse_data: dict, guide_satellite: str):
+        self._target_satellite_ephemeris = eclipse_data
+        self._guide_satellite_ephemeris = \
+            _get_ephemeris(starting_datetime=eclipse_data['datetime_str'][0],
+                           ending_datetime=eclipse_data['datetime_str'][-1],
+                           target=guide_satellite, airmass_lessthan=None)
+        self._offsets_guide_to_target = self._calculate_offsets(
+            origin=self._guide_satellite_ephemeris,
+            destination=self._target_satellite_ephemeris)
+        self._offsets_target_to_guide = self._calculate_offsets(
+            origin=self._target_satellite_ephemeris,
+            destination=self._guide_satellite_ephemeris)
+
+    @staticmethod
+    def _calculate_offsets(origin: dict, destination: dict):
+        origin_ra = origin['RA_app']
+        destination_ra = destination['RA_app']
+        ra_offset = ((destination_ra - origin_ra) * u.degree).to(u.arcsec)
+        dra = destination['RA_rate'].to(u.arcsec / u.s) / 15
+
+        origin_dec = origin['DEC_app']
+        destination_dec = destination['DEC_app']
+        dec_offset = ((destination_dec - origin_dec) * u.degree).to(u.arcsec)
+        ddec = destination['DEC_rate'].to(u.arcsec / u.s)
+
+        npang = destination['NPole_ang']
+
+        return {
+            'name': destination['targetname'][0],
+            'time': destination['datetime_str'],
+            'ra': destination_ra,
+            'ra_offset': ra_offset,
+            'dra': dra,
+            'dec': destination_dec,
+            'dec_offset': dec_offset,
+            'ddec': ddec,
+            'npang': npang,
+            'nlines': len(origin_ra),
+        }
+
+    @property
+    def offsets_guide_to_target(self):
+        return self._offsets_guide_to_target
+
+    @property
+    def offsets_target_to_guide(self):
+        return self._offsets_target_to_guide
+
+
 class EclipsePrediction:
     """
     This class finds all instances of a target (Io, Europa, Ganymede or
@@ -331,3 +382,74 @@ class EclipsePrediction:
                 filepath.mkdir(parents=True)
             plt.savefig(filepath)
             plt.close(fig)
+
+    @staticmethod
+    def offset_position(ind: int, offsets: dict) -> str:
+        return f"{offsets['name'].split(' ')[0]} " \
+               f"{offsets['time'][ind].split(' ')[1]}   " \
+               f"en {offsets['ra_offset'][ind].value:.3f} " \
+               f"{offsets['dec_offset'][ind].value:.3f}\n"
+
+    @staticmethod
+    def offset_rates(ind: int, offsets: dict) -> str:
+        return f"{offsets['name'].split(' ')[0]} " \
+               f"{offsets['time'][ind].split(' ')[1]}   " \
+               f"modify -s dcs dtrack=1 dra={offsets['dra'][ind].value:.9f} " \
+               f"ddec={offsets['ddec'][ind].value:.9f}\n"
+
+    def save_pointing_offsets(self, guide_satellite,
+                              save_directory: str = Path.cwd()):
+        for eclipse in self._eclipses:
+            pointing_information = TelescopePointing(
+                eclipse, guide_satellite=target_info[guide_satellite]['ID'])
+            date = eclipse['datetime_str'][0].split(' ')[0]
+
+            # guide to target
+            info = pointing_information.offsets_guide_to_target
+            guide_to_target_offsets = Path(
+                save_directory,
+                f'offsets_{guide_satellite}_to_{self._target_name}_{date}.txt')
+            if not guide_to_target_offsets.parent.exists():
+                guide_to_target_offsets.parent.mkdir(parents=True)
+            with open(guide_to_target_offsets, 'w') as file:
+                for i in range(info['nlines']):
+                    file.write(self.offset_position(i, info))
+            guide_to_target_rates = Path(
+                save_directory,
+                f'rates_{guide_satellite}_to_{self._target_name}_{date}.txt')
+            if not guide_to_target_rates.parent.exists():
+                guide_to_target_rates.parent.mkdir(parents=True)
+            with open(guide_to_target_rates, 'w') as file:
+                for i in range(info['nlines']):
+                    file.write(self.offset_rates(i, info))
+
+            # target to guide
+            info = pointing_information.offsets_target_to_guide
+            # target_to_guide_file = Path(
+            #     save_directory,
+            #     f'offsets_{self._target_name}_to_{guide_satellite}_{date}.txt')
+            # if not target_to_guide_file.parent.exists():
+            #     target_to_guide_file.parent.mkdir(parents=True)
+            # with open(target_to_guide_file, 'w') as file:
+            #     for i in range(info['nlines']):
+            #         file.write(self.offset_lineitem(i, info))
+            target_to_guide_offsets = Path(
+                save_directory,
+                f'offsets_{self._target_name}_to_{guide_satellite}_{date}.txt')
+            if not target_to_guide_offsets.parent.exists():
+                target_to_guide_offsets.parent.mkdir(parents=True)
+            with open(target_to_guide_offsets, 'w') as file:
+                for i in range(info['nlines']):
+                    file.write(self.offset_position(i, info))
+            target_to_guide_rates = Path(
+                save_directory,
+                f'rates_{self._target_name}_to_{guide_satellite}_{date}.txt')
+            if not target_to_guide_rates.parent.exists():
+                target_to_guide_rates.parent.mkdir(parents=True)
+            with open(target_to_guide_rates, 'w') as file:
+                for i in range(info['nlines']):
+                    file.write(self.offset_rates(i, info))
+
+if __name__ == "__main__":
+    prediction = EclipsePrediction(starting_datetime='2021-06-08', ending_datetime='2021-06-09', target='Ganymede')
+    prediction.save_pointing_offsets(guide_satellite='Europa', save_directory='/Users/zachariahmilby/Desktop')

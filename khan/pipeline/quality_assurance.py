@@ -158,7 +158,7 @@ def make_instrument_correction_quality_assurance_graphic(
     file_name = Path(save_path, 'quality_assurance',
                      'instrument_artifact_correction',
                      sub_directory,
-                     images[0].anc['file_name'].replace('.fits.gz', '.pdf'))
+                     images[0].anc['file_name'].replace('.fits', '.pdf').replace('.gz', ''))
     if not file_name.parent.exists():
         file_name.parent.mkdir(parents=True)
     fig.savefig(file_name, dpi=300)

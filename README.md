@@ -126,6 +126,36 @@ upper right plot shows the target satellite airmass over the course of the
 eclipse. The lower right plot shows the angular separation between the target 
 satellite, Jupiter and the other Galilean satellites.
 
+I've also included the ability to automatically generate the list of offsets 
+and rates for manual telescope pointing and tracking. For example, if you are 
+using Io as the guide satellite:
+```
+>>> eclipse_prediction.save_pointing_offsets(guide_satellite='Io', save_directory='/path/to/directory')
+```
+This will save four files: two sets of RA/Dec offsets (from the guide satellite 
+to the target and vice-versa) and two equivalent sets of RA/Dec rates, each
+formatted with the name of the satellite you are slewing to and the 
+properly-formatted terminal command. For example, for June 8, 2021, the first 
+three lines of the offset file from Europa (the guide satellite) to Ganymede 
+(the eclipse target) `offsets_Europa_to_Ganymede_2021-Jun-08.txt` are
+```
+Ganymede 12:48   en -257.868 -105.588
+Ganymede 12:49   en -257.616 -105.444
+Ganymede 12:50   en -257.400 -105.372
+```
+so simply match the closest UTC time on the telescope status window, then type
+the command like `>>> en -257.868 -105.588`.
+
+The rate file which goes with these offsets is 
+`rates_Europa_to_Ganymede_2021-Jun-08.txt` and its first three lines look like
+```
+Ganymede 12:48   modify -s dcs dtrack=1 dra=0.000287388 ddec=0.001614987
+Ganymede 12:49   modify -s dcs dtrack=1 dra=0.000287390 ddec=0.001615227
+Ganymede 12:50   modify -s dcs dtrack=1 dra=0.000287392 ddec=0.001615467
+```
+so matching the same time with the offsets, the command would be something like
+`>>> modify -s dcs dtrack=1 dra=0.000287388 ddec=0.001614987`.
+
 ## Running the Pipeline
 There are three steps to running this pipeline.
 1. Sort your data files manually so it knows where to find file type. 

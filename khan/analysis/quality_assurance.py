@@ -78,7 +78,8 @@ def make_background_subtraction_quality_assurance_graphic(
         [axis.set_aspect('equal')for axis in axes]
         [axis.set_xticks([]) for axis in axes]
         [axis.set_yticks([]) for axis in axes]
-        filename = order_data.filenames[obs].replace('.fits.gz', '.pdf')
+        filename = order_data.filenames[obs].replace('.fits', '.pdf').replace(
+            '.gz', '')
         savepath = Path(save_path, f'{average_wavelength:.1f}',
                         'spectra_2D', filename)
         if not savepath.parent.exists():
