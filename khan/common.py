@@ -213,10 +213,10 @@ def aurora_line_wavelengths(extended: bool = False) -> [u.Quantity]:
         ]
     if extended:
         wavelengths.append([588.9950, 589.5924] * u.nm)  # neutral Na
-        wavelengths.append([772.5046] * u.nm)  # neutral S
         wavelengths.append([766.4899] * u.nm)  # neutral K
-        wavelengths.append([872.7126] * u.nm)  # neutral C
+        wavelengths.append([772.5046] * u.nm)  # neutral S
         wavelengths.append([837.5943] * u.nm)  # neutral Cl
+        wavelengths.append([872.7126] * u.nm)  # neutral C
     return wavelengths
 
 
