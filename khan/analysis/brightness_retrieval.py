@@ -538,8 +538,26 @@ class AuroraBrightness:
             self._save_background_subtracted_images(
                 calibrated_image.value,
                 self._order_data.filenames[obs].replace(
+                    '.fits', '_bg-subtracted.txt').replace('.gz', ''))
+            calibrated_images.append(calibrated_image.value)
+
+            # update 2022-11-09: also save a calibrated image without
+            # background subtraction
+            converted_target_flux = self._convert_target_to_flux_per_disk(
+                self._order_data.target_images[obs])
+            calibrated_image = (converted_target_flux
+                                * self._calibration_factor
+                                * self._order_data.slit_width
+                                / self._order_data.spectral_bin_scale
+                                * self._get_dwavelength()).to(u.R)
+            self._save_background_subtracted_images(
+                calibrated_image.value,
+                self._order_data.filenames[obs].replace(
                     '.fits', '.txt').replace('.gz', ''))
             calibrated_images.append(calibrated_image.value)
+
+        # there's no need to have the average image with the background, for
+        # now...
         background_subtracted_average_image = \
             (self._order_data.average_target_image
              - self._background.average_background)
