@@ -538,7 +538,7 @@ class AuroraBrightness:
             self._save_background_subtracted_images(
                 calibrated_image.value,
                 self._order_data.filenames[obs].replace(
-                    '.fits', '_bg-subtracted.txt').replace('.gz', ''))
+                    '.fits', '_bgsub.txt').replace('.gz', ''))
             calibrated_images.append(calibrated_image.value)
 
             # update 2022-11-09: also save a calibrated image without
